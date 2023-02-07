@@ -35,15 +35,16 @@ def find_image(dataset,image_numb):
     return image_name
 
 def draw_img(dataset,image_numb,annote_ids):
-    
     image_name = find_image(dataset,image_numb)
     img = plt.imread(image_dir+image_name)
     fix,ax=plt.subplots()
     ax.imshow(img)
     for ids in annote_ids:
-        bbox,annotation = load_annotation(dataset, ids)
+        bbox,annotation = load_annotation(dataset, ids) # Get bounding box and annotations
         bbox_x, bbox_y, width, height = bbox
         ax.add_patch(plt.Rectangle((bbox_x, bbox_y), width, height,linewidth=1,edgecolor='b', facecolor='none'))
+        x, y = annotation[0][0::2],annotation[0][1::2]
+        plt.fill(x, y,alpha=.7)
     plt.show()
     
 annotation_path = 'C:/Users/Cornelius/OneDrive/DTU/Bachelor/COCO_testt.json'
