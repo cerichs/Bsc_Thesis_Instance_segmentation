@@ -43,7 +43,7 @@ def draw_img(dataset,image_numb,annote_ids):
         bbox,annotation = load_annotation(dataset, ids) # Get bounding box and annotations
         bbox_x, bbox_y, width, height = bbox
         ax.add_patch(plt.Rectangle((bbox_x, bbox_y), width, height,linewidth=1,edgecolor='b', facecolor='none'))
-        x, y = annotation[0][0::2],annotation[0][1::2]
+        x, y = annotation[0][0::2],annotation[0][1::2] # comes in pair of [x,y,x,y,x,y], there split with even and uneven
         plt.fill(x, y,alpha=.7)
     plt.show()
     
