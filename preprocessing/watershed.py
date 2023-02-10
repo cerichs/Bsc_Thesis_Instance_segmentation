@@ -9,11 +9,10 @@ import numpy as np
 from cv2 import watershed
 import cv2 as cv
 from matplotlib import pyplot as plt
-from skimage import color, io, measure, segmentation
+from skimage import segmentation
 from skimage.filters import threshold_otsu
 from skimage.morphology import erosion,dilation, square
-from tensorflow.keras.preprocessing import image
-
+from watershed_2_coco import coco_dict, export_json
 
     
 img_name = 'pixelwise.png'
@@ -59,7 +58,14 @@ markers[unknown==255] = 0
 markers = watershed(im,markers)
 
 markers = segmentation.clear_border(markers,bgval=1)
+test_dict = coco_dict(img_name,markers)
 
-
+export_json(test_dict)
+#plt.imshow(im)
+#plt.fill(x,y,alpha=.7,color='g')
+#plt.show()
+#im[markers == -1] = [255,0,0]
+#plt.imshow(im)
+#plt.show()
 plt.imshow(markers == -1)
 plt.show()
