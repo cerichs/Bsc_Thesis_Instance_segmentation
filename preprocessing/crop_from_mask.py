@@ -43,10 +43,17 @@ annotation_path = 'C:/Users/Cornelius/OneDrive/DTU/Bachelor/COCO_testt.json'
 image_dir = 'C:/Users/Cornelius/OneDrive/DTU/Bachelor/'
 image_numb = 1
 dataset = load_coco(annotation_path)
-bbox, annotation = load_annotation(dataset, image_numb)
+
 image_name,image_id = find_image(dataset, image_numb)
 
-cropped_im = fill_mask(image_id,annotation)
-cropped = crop_from_mask(bbox,cropped_im,dataset)
+annote_ids = []
+for i in range(len(dataset['annotations'])):
+    if dataset['annotations'][i]['image_id']==image_numb:
+        annote_ids.append(i)
+for idx in annote_ids:
+    bbox, annotation = load_annotation(dataset, idx,image_numb)
+    cropped_im = fill_mask(image_id,annotation)
+    cropped = crop_from_mask(bbox,cropped_im,dataset)
+    plt.imshow(cropped)
+    plt.show()
 
-plt.imshow(cropped)

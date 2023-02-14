@@ -22,9 +22,9 @@ def load_coco(path):
     ## TODO: add to dict, feature that shows tracks all the annotations belonging to 1 image
     return masks
 
-def load_annotation(dataset, image_numb):
+def load_annotation(dataset, annotation_numb,image_numb):
     temp = dataset['annotations']
-    image_mask = temp[image_numb]
+    image_mask = temp[annotation_numb]
     bbox = image_mask['bbox']
     annotation = image_mask['segmentation']
     return bbox, annotation
@@ -40,7 +40,7 @@ def draw_img(dataset,image_numb,annote_ids):
     fix,ax=plt.subplots()
     ax.imshow(img)
     for ids in annote_ids:
-        bbox,annotation = load_annotation(dataset, ids) # Get bounding box and annotations
+        bbox,annotation = load_annotation(dataset, ids, image_numb) # Get bounding box and annotations
         bbox_x, bbox_y, width, height = bbox
         ax.add_patch(plt.Rectangle((bbox_x, bbox_y), width, height,linewidth=1,edgecolor='b', facecolor='none'))
         x, y = annotation[0][0::2],annotation[0][1::2] # comes in pair of [x,y,x,y,x,y], there split with even and uneven
