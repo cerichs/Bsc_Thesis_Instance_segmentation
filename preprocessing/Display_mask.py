@@ -32,10 +32,10 @@ def load_annotation(dataset, image_numb):
 def find_image(dataset,image_numb):
     image_id=dataset['annotations'][image_numb]['image_id']
     image_name=dataset['images']['id'==image_id]['file_name']
-    return image_name
+    return image_name,image_id
 
 def draw_img(dataset,image_numb,annote_ids):
-    image_name = find_image(dataset,image_numb)
+    image_name,image_id = find_image(dataset,image_numb)
     img = plt.imread(image_dir+image_name)
     fix,ax=plt.subplots()
     ax.imshow(img)
