@@ -22,7 +22,7 @@ def crop_from_mask(bbox,cropped_im,dataset):
     cropped = cropped_im[start_x:end_x,start_y:end_y]
     return cropped
 
-def fill_mask(image_id,annotation):
+def fill_mask(image_id,annotation,image_name):
     height = dataset['images']['id'==image_id]['height']
     width = dataset['images']['id'==image_id]['width']
     mini_img = np.zeros((height,width),dtype=bool)
@@ -35,6 +35,8 @@ def fill_mask(image_id,annotation):
     row, col = polygon(y, x, img.shape)
     img[row,col] = 1
     orig_im = cv.imread(image_name)
+    orig_im = cv.cvtColor(orig_im, cv.COLOR_BGR2RGB)
+
     cropped_im = cv.bitwise_and(orig_im, orig_im, mask=np.uint8(img))
     return cropped_im
 
@@ -52,7 +54,7 @@ for i in range(len(dataset['annotations'])):
         annote_ids.append(i)
 for idx in annote_ids:
     bbox, annotation = load_annotation(dataset, idx,image_numb)
-    cropped_im = fill_mask(image_id,annotation)
+    cropped_im = fill_mask(image_id,annotation,image_name)
     cropped = crop_from_mask(bbox,cropped_im,dataset)
     plt.imshow(cropped)
     plt.show()
