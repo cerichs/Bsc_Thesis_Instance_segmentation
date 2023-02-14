@@ -96,13 +96,13 @@ def overlay_on_larger_image(larger_image,smaller_image,x_offset=None,y_offset=No
 
     """
     if x_offset == None:
-        x = np.random.randint(0,larger_image.shape[1])
+        x = np.random.randint(0,(larger_image.shape[1]-smaller_image.shape[1]))
     if y_offset == None:
-        y = np.random.randint(0,larger_image.shape[0])
+        y = np.random.randint(0,(larger_image.shape[0]-smaller_image.shape[0]))
     temp = larger_image[y:y+smaller_image.shape[0], x:x+smaller_image.shape[1]] # Selecting a window of the image to edit
-    temp[cropped>0] = 0 # All the places where the object is, is set to 0 (the background around mask is unchanged)
-    temp += cropped * (cropped > 0) 
-    larger_image[y:y+smaller_image.shape[0], x:x+smaller_image.shape[1]] = temp
+    temp[cropped>0] = 0 # All the places where the object is, is set to 0. Where the mask is 0, does remains unchanged from the larger_image
+    temp += cropped * (cropped > 0) #the object is added to the blackened image
+    larger_image[y:y+smaller_image.shape[0], x:x+smaller_image.shape[1]] = temp # The window is put back into larger_image
     plt.imshow(larger_image)
     plt.show()
 
@@ -121,7 +121,7 @@ for i in range(len(dataset['annotations'])):
 for idx in annote_ids:
     bbox, annotation = load_annotation(dataset, idx,image_numb)
     cropped_im = fill_mask(image_id,annotation,image_name)
-    cropped = crop_from_mask(bbox,cropped_im,dataset)
+    cropped = crop_from_mask(bbox,cropped_im)
     overlay_on_larger_image(background,cropped)
     plt.imshow(cropped)
     plt.show()
