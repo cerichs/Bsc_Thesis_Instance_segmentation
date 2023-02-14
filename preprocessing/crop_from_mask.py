@@ -40,12 +40,24 @@ def fill_mask(image_id,annotation,image_name):
     cropped_im = cv.bitwise_and(orig_im, orig_im, mask=np.uint8(img))
     return cropped_im
 
+def overlay_on_larger_image(larger_image,smaller_image,x_offset=None,y_offset=None):
+    if x_offset == None:
+        x = np.random.randint(0,larger_image.shape[1])
+    if y_offset == None:
+        y = np.random.randint(0,larger_image.shape[0])
+    temp = larger_image[y:y+smaller_image.shape[0], x:x+smaller_image.shape[1]]
+    temp[cropped>0] = 0
+    temp += cropped*(cropped > 0)
+    larger_image[y:y+smaller_image.shape[0], x:x+smaller_image.shape[1]] = temp
+    plt.imshow(larger_image)
+    plt.show()
 
 annotation_path = 'C:/Users/Cornelius/OneDrive/DTU/Bachelor/COCO_testt.json'
 image_dir = 'C:/Users/Cornelius/OneDrive/DTU/Bachelor/'
 image_numb = 1
 dataset = load_coco(annotation_path)
-
+background = cv.imread("sunset.jfif")
+background = cv.cvtColor(background, cv.COLOR_BGR2RGB)
 image_name,image_id = find_image(dataset, image_numb)
 
 annote_ids = []
@@ -56,6 +68,7 @@ for idx in annote_ids:
     bbox, annotation = load_annotation(dataset, idx,image_numb)
     cropped_im = fill_mask(image_id,annotation,image_name)
     cropped = crop_from_mask(bbox,cropped_im,dataset)
+    overlay_on_larger_image(background,cropped)
     plt.imshow(cropped)
     plt.show()
 
