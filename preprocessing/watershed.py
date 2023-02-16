@@ -15,14 +15,16 @@ from skimage.morphology import erosion,dilation, square
 from watershed_2_coco import coco_dict, export_json
 
     
-img_name = 'pixelwise.png'
+img_name = "test_img.png"
 im = cv.imread(img_name) # Load image
+im = cv.cvtColor(im,cv.COLOR_BGR2RGB) # Load image
 grayscale = cv.cvtColor(im,cv.COLOR_RGB2GRAY) # Convert to Grayscale
 
 auto_tresh = threshold_otsu(grayscale) # Determine Otsu threshold
 
 segm_otsu = (grayscale < auto_tresh) # Apply threshold
 img = segm_otsu.astype(int)*255 # Convert Bool type to 0:255 int
+
 
 # Morp opening, with 2 iterations, (erode->erode->dilate->dilate)
 footprint = square(3) # 3x3 square kernel
@@ -45,6 +47,9 @@ ret, fg = cv.threshold(dist_transform,0.5*dist_transform.max(),255,0)
 # Finding unknown region
 fg = np.uint8(fg)
 
+plt.imshow(fg)
+plt.show()
+
 unknown = bg_3 - fg  #The unknown area is the area that is not the foreground or background
 
 # Marker labelling
@@ -57,15 +62,17 @@ markers[unknown==255] = 0
 
 markers = watershed(im,markers)
 
-markers = segmentation.clear_border(markers,bgval=1)
+
 test_dict = coco_dict(img_name,markers)
 
 export_json(test_dict)
 #plt.imshow(im)
 #plt.fill(x,y,alpha=.7,color='g')
 #plt.show()
-#im[markers == -1] = [255,0,0]
-#plt.imshow(im)
-#plt.show()
-plt.imshow(markers == -1)
+fix,(ax1,ax2)=plt.subplots(1,2)
+im[markers == -1] = [255,0,0]
+ax1.imshow(im)
+ax1.axis('off')
+ax2.imshow(markers == -1)
+ax2.axis('off')
 plt.show()

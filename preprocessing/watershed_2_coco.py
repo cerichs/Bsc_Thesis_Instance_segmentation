@@ -51,7 +51,8 @@ def export_json(dict_coco):
         json.dump(dict_coco, fp)
 
 
-annotation_path = 'C:/Users/Cornelius/OneDrive/DTU/Bachelor/COCO_testt.json'
+#annotation_path = 'C:/Users/Cornelius/OneDrive/DTU/Bachelor/COCO_testt.json'
+annotation_path = 'COCO_testt.json'
 #annotation_path = 'C:/Users/Cornelius/Documents/GitHub/Bscproject/Bsc_Thesis_Instance_segmentation/preprocessing/COCO_export.json'
 json_open = open(annotation_path)
 masks = json.load(json_open)
