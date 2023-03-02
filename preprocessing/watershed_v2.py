@@ -75,7 +75,7 @@ plt.imshow(markers)
 plt.show()
 
 fig, ax = plt.subplots(figsize=(10,12))
-ax.imshow(image_g)
+ax.imshow(im)
 for cnt in np.unique(markers[markers > 0]):
     temp = markers.copy()
     temp[temp != cnt] = 0
@@ -88,7 +88,7 @@ for cnt in np.unique(markers[markers > 0]):
     for j in range(len(new_array)):
         temp.append(int(new_array[j,0]))
         temp.append(int(new_array[j,1]))
-    ax.plot(temp[0::2],temp[1::2],linestyle="-",linewidth=.5)
+    ax.plot(temp[0::2],temp[1::2],linestyle="-",linewidth=1)
     
 ax.axis('off')
 plt.savefig("test.png",dpi=400)
