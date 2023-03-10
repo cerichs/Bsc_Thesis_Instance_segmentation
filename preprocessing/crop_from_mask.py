@@ -39,7 +39,7 @@ def crop_from_mask(bbox,cropped_im):
     cropped = cropped_im[start_x:end_x,start_y:end_y]
     return cropped
 
-def fill_mask(image_id,annotation,image_name):
+def fill_mask(dataset,image_id,annotation,image_name):
     """ Takes the segmentations from COCO dataset and discards the background 
     (ie. the region that is not withing interest)
 
@@ -58,8 +58,10 @@ def fill_mask(image_id,annotation,image_name):
     been cropped out and put on a black background
 
     """
-    height = dataset['images']['id'==image_id]['height']
-    width = dataset['images']['id'==image_id]['width']
+    for i in range(len(dataset['images'])):
+        if (dataset['images'][i]['id']==image_id):
+            height = dataset['images'][i]['height']
+            width = dataset['images'][i]['width']
     mini_img = np.zeros((height,width),dtype=bool)
     x, y = (annotation[0][0::2]),(annotation[0][1::2])
     for x_x,y_y in zip(x,y):
@@ -71,11 +73,11 @@ def fill_mask(image_id,annotation,image_name):
     img[row,col] = 1
     orig_im = cv.imread(image_name)
     orig_im = cv.cvtColor(orig_im, cv.COLOR_BGR2RGB)
-
+    orig_im = np.uint8(orig_im)
     cropped_im = cv.bitwise_and(orig_im, orig_im, mask=np.uint8(img))
     return cropped_im
 
-def overlay_on_larger_image(larger_image,smaller_image,x_offset=None,y_offset=None):
+def overlay_on_larger_image(larger_image,smaller_image,x=None,y=None):
     """ Place an object from a mask upon an image that is larger or same size as the object image
     Parameters
     ----------
@@ -83,10 +85,10 @@ def overlay_on_larger_image(larger_image,smaller_image,x_offset=None,y_offset=No
         The background image to be overlayed upon
     smaller_image : array-like
         The object to be placed on the larger_image
-    x_offset : int. Optional
+    x : int. Optional
         Where to place the object in respect to origo on the x-axis
         Optional. The default is None.
-    y_offset : int. Optional
+    y : int. Optional
         Where to place the object in respect to origo on the y-axis
         The default is None.
 
@@ -95,34 +97,36 @@ def overlay_on_larger_image(larger_image,smaller_image,x_offset=None,y_offset=No
     Displays the resulting image.
 
     """
-    if x_offset == None:
+    if x == None:
         x = np.random.randint(0,(larger_image.shape[1]-smaller_image.shape[1]))
-    if y_offset == None:
+    if y == None:
         y = np.random.randint(0,(larger_image.shape[0]-smaller_image.shape[0]))
     temp = larger_image[y:y+smaller_image.shape[0], x:x+smaller_image.shape[1]] # Selecting a window of the image to edit
-    temp[cropped>0] = 0 # All the places where the object is, is set to 0. Where the mask is 0, does remains unchanged from the larger_image
-    temp += cropped * (cropped > 0) #the object is added to the blackened image
+    temp[smaller_image>0] = 0 # All the places where the object is, is set to 0. Where the mask is 0, does remains unchanged from the larger_image
+    temp += smaller_image * (smaller_image > 0) #the object is added to the blackened image
     larger_image[y:y+smaller_image.shape[0], x:x+smaller_image.shape[1]] = temp # The window is put back into larger_image
-    plt.imshow(larger_image)
-    plt.show()
+    return larger_image
 
-annotation_path = 'C:/Users/Cornelius/OneDrive/DTU/Bachelor/COCO_testt.json'
-image_dir = 'C:/Users/Cornelius/OneDrive/DTU/Bachelor/'
-image_numb = 1
-dataset = load_coco(annotation_path)
-background = cv.imread("sunset.jfif")
-background = cv.cvtColor(background, cv.COLOR_BGR2RGB)
-image_name,image_id = find_image(dataset, image_numb)
-
-annote_ids = []
-for i in range(len(dataset['annotations'])):
-    if dataset['annotations'][i]['image_id']==image_numb:
-        annote_ids.append(i)
-for idx in annote_ids:
-    bbox, annotation = load_annotation(dataset, idx,image_numb)
-    cropped_im = fill_mask(image_id,annotation,image_name)
-    cropped = crop_from_mask(bbox,cropped_im)
-    overlay_on_larger_image(background,cropped)
-    plt.imshow(cropped)
-    plt.show()
-
+imported = True
+if not imported:  
+    annotation_path = r'C:\Users\Cornelius\Documents\GitHub\Bscproject\Bsc_Thesis_Instance_segmentation\preprocessing\COCO_Test.json'
+    image_dir = 'C:/Users/Cornelius/Documents/GitHub/Bscproject/Bsc_Thesis_Instance_segmentation/preprocessing/'
+    image_numb = 1
+    dataset = load_coco(annotation_path)
+    background = cv.imread("sunset.jfif")
+    background = cv.cvtColor(background, cv.COLOR_BGR2RGB)
+    image_name,image_id = find_image(dataset, image_numb)
+    #image_name = "Test_Rye_Midsummer_Dense_series1_20_08_20_10_33_01.jpg"
+    
+    annote_ids = []
+    for i in range(len(dataset['annotations'])):
+        if dataset['annotations'][i]['image_id']==image_numb:
+            annote_ids.append(i)
+    for idx in annote_ids:
+        bbox, annotation = load_annotation(dataset, idx,image_numb)
+        cropped_im = fill_mask(image_id,annotation,image_name)
+        cropped = crop_from_mask(bbox,cropped_im)
+        overlay_on_larger_image(background,cropped)
+        #plt.imshow(cropped)
+        #plt.show()
+    

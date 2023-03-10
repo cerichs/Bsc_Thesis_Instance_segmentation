@@ -29,9 +29,12 @@ def load_annotation(dataset, annotation_numb,image_numb):
     annotation = image_mask['segmentation']
     return bbox, annotation
 
-def find_image(dataset,image_numb):
-    image_id=dataset['annotations'][image_numb]['image_id']
-    image_name=dataset['images']['id'==image_id]['file_name']
+def find_image(dataset,annotation_numb):
+    image_id=dataset['annotations'][annotation_numb]['image_id']
+    for i in range(len(dataset['images'])):
+        if dataset['images'][i]['id']==image_id:
+            image_name=dataset['images'][i]['file_name']
+    
     return image_name,image_id
 
 def draw_img(dataset,image_numb,annote_ids):
