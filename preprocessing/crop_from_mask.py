@@ -10,13 +10,13 @@ import matplotlib.pyplot as plt
 import cv2 as cv
 from skimage.draw import polygon
 
-def crop_from_mask(bbox,cropped_im):
+def crop_from_mask(dataset,annotation_numb,cropped_im):
     """Crops the region of interest in the cropped_im image
     
     Parameters
     ----------
-    bbox : list, [x,y,width,height]
-        The bounding box from the COCO dataset.
+    annotation_numb : list, [x,y,width,height]
+        The annotation number from the COCO dataset.
     cropped_im : Array-like image
         The image from fill_mask, where the background is removed and only
         region of intereset is shown, rest is black.
@@ -28,15 +28,13 @@ def crop_from_mask(bbox,cropped_im):
         x*y
 
     """
-    bbox=np.int16(bbox)
+    start_x = min(dataset['annotations'][annotation_numb]['segmentation'][0][0::2])
+    start_y = min(dataset['annotations'][annotation_numb]['segmentation'][0][1::2])
+    end_x = max(dataset['annotations'][annotation_numb]['segmentation'][0][0::2])-start_x
+    end_y = max(dataset['annotations'][annotation_numb]['segmentation'][0][1::2])-start_y
 
-    start_x = bbox[1]
-    end_x = bbox[1]+bbox[3]
+    cropped = cropped_im[start_y:start_y+end_y,start_x:start_x+end_x]
 
-    start_y = bbox[0]
-    end_y = bbox[0]+bbox[2]
-    
-    cropped = cropped_im[start_x:end_x,start_y:end_y]
     return cropped
 
 def fill_mask(dataset,image_id,annotation,image_name):
@@ -125,7 +123,7 @@ if not imported:
     for idx in annote_ids:
         bbox, annotation = load_annotation(dataset, idx,image_numb)
         cropped_im = fill_mask(image_id,annotation,image_name)
-        cropped = crop_from_mask(bbox,cropped_im)
+        cropped = crop_from_mask(dataset,idx,cropped_im)
         overlay_on_larger_image(background,cropped)
         #plt.imshow(cropped)
         #plt.show()

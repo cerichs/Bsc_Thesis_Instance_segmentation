@@ -49,13 +49,14 @@ def draw_img(dataset,image_numb,annote_ids):
         x, y = annotation[0::2],annotation[1::2] # comes in pair of [x,y,x,y,x,y], there split with even and uneven
         plt.fill(x, y,alpha=.7)
     plt.show()
-    
-annotation_path = 'C:/Users/Cornelius/Documents/GitHub/Bscproject/Bsc_Thesis_Instance_segmentation/preprocessing/COCO_export.json'
-image_dir = 'C:/Users/Cornelius/Documents/GitHub/Bscproject/Bsc_Thesis_Instance_segmentation/preprocessing/'
-image_numb = 1
-dataset = load_coco(annotation_path)
-annote_ids = []
-for i in range(len(dataset['annotations'])):
-    if dataset['annotations'][i]['image_id']==image_numb:
-        annote_ids.append(i)
-draw_img(dataset,image_numb,annote_ids)
+imported = True
+if not imported:  
+    annotation_path = 'C:/Users/Cornelius/Documents/GitHub/Bscproject/Bsc_Thesis_Instance_segmentation/preprocessing/COCO_export.json'
+    image_dir = 'C:/Users/Cornelius/Documents/GitHub/Bscproject/Bsc_Thesis_Instance_segmentation/preprocessing/'
+    image_numb = 1
+    dataset = load_coco(annotation_path)
+    annote_ids = []
+    for i in range(len(dataset['annotations'])):
+        if dataset['annotations'][i]['image_id']==image_numb:
+            annote_ids.append(i)
+    draw_img(dataset,image_numb,annote_ids)

@@ -29,8 +29,6 @@ def find_x_y(larger_image,smaller_image,annotation,height,width):
         y = np.random.randint(0,(larger_image.shape[0]-smaller_image.shape[0]))
         x,y = edge_grain(annotation,height,width,x,y,larger_image)
         temp = larger_image[y:y+smaller_image.shape[0], x:x+smaller_image.shape[1]]
-        #plt.imshow(smaller_image)
-        #plt.show()
         overlap_amount = np.sum(np.multiply(temp,smaller_image))
         #print(overlap_amount)
         if overlap_amount<25000: #TODO make it a ratio of kernel, as smaller kernels constantly overlapped
@@ -83,20 +81,23 @@ def coco_new_bbox(x,y,dataset,image_id,annotation_numb):
 annotation_path = r'C:\Users\Cornelius\Documents\GitHub\Bscproject\Bsc_Thesis_Instance_segmentation\preprocessing\COCO_Test.json'
 image_dir = 'C:/Users/Cornelius/Documents/GitHub/Bscproject/Bsc_Thesis_Instance_segmentation/preprocessing/'
 dataset = load_coco(annotation_path)
-for c in range(1):
-    background = np.zeros((512,512,3),dtype = np.uint8)
+for c in range(100):
+    background = np.zeros((128,128,3),dtype = np.uint8)
     background = cv.cvtColor(background, cv.COLOR_BGR2RGB)
-    max_tries=2000
+    max_tries=100
     j=0
     dict_coco = empty_dict()
     while(j<max_tries):
         annotation_numb = np.random.randint(0,len(dataset['annotations']))
-        image_name,image_id = find_image(dataset, annotation_numb)
-        bbox, annotation = load_annotation(dataset, annotation_numb,image_id)
-        cropped_im = fill_mask(dataset,image_id,annotation,image_name)
-        height,width=cropped_im.shape[0],cropped_im.shape[1]
-        cropped = crop_from_mask(bbox,cropped_im)
-        x, y, keep = find_x_y(background,cropped,annotation,height,width)
+        #annotation_numb = 3792
+        if annotation_numb == 4485:
+            print("bye bye error")
+        image_name, image_id = find_image(dataset, annotation_numb)
+        bbox, annotation = load_annotation(dataset, annotation_numb, image_id)
+        cropped_im = fill_mask(dataset,image_id, annotation, image_name)
+        height, width = cropped_im.shape[0], cropped_im.shape[1]
+        cropped = crop_from_mask(dataset, annotation_numb, cropped_im)
+        x, y, keep = find_x_y(background, cropped,annotation, height,width)
         if keep:
             background = overlay_on_larger_image(background,cropped,x,y)
             dict_coco['annotations'].append({'id':coco_next_anno_id(dict_coco),
