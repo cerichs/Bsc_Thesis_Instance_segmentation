@@ -32,8 +32,8 @@ def placement(bbox,segmentation,image):
     return new_img, segmentation
 
 
-annotation_path = 'C:/Users/Cornelius/OneDrive/DTU/Bachelor/COCO_testt.json'
-image_dir = 'C:/Users/Cornelius/OneDrive/DTU/Bachelor/'
+annotation_path = 'C:/Users/Corne/Downloads/DreierHSI_Mar_03_2023_09_18_Ole-Christian Galbo/Training/COCO_training.json'
+image_dir = 'C:/Users/Corne/Downloads/DreierHSI_Mar_03_2023_09_18_Ole-Christian Galbo/Training/images'
 image_numb = 1
 dataset = load_coco(annotation_path)
 bbox, annotation = load_annotation(dataset, image_numb)

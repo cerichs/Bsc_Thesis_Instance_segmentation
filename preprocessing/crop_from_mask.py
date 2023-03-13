@@ -37,7 +37,7 @@ def crop_from_mask(dataset,annotation_numb,cropped_im):
 
     return cropped
 
-def fill_mask(dataset,image_id,annotation,image_name):
+def fill_mask(dataset,image_id,annotation,image_name,image_path):
     """ Takes the segmentations from COCO dataset and discards the background 
     (ie. the region that is not withing interest)
 
@@ -69,7 +69,8 @@ def fill_mask(dataset,image_id,annotation,image_name):
 
     row, col = polygon(y, x, img.shape)
     img[row,col] = 1
-    orig_im = cv.imread(image_name)
+    PATH = image_path+image_name
+    orig_im = cv.imread(PATH)
     orig_im = cv.cvtColor(orig_im, cv.COLOR_BGR2RGB)
     orig_im = np.uint8(orig_im)
     cropped_im = cv.bitwise_and(orig_im, orig_im, mask=np.uint8(img))
