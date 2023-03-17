@@ -26,15 +26,15 @@ def load_annotation(dataset, annotation_numb,image_numb):
     temp = dataset['annotations']
     image_mask = temp[annotation_numb]
     bbox = image_mask['bbox']
-    annotation = image_mask['segmentation'][0]
+    annotation = image_mask['segmentation']
     return bbox, annotation
 
-def find_image(dataset,image_numb):
+def find_image(dataset,annotation_numb):
+    image_id=dataset['annotations'][annotation_numb]['image_id']
     for i in range(len(dataset['images'])):
-        if dataset['images'][i]['id']==image_numb:
+        if dataset['images'][i]['id']==image_id:
             image_name=dataset['images'][i]['file_name']
-            image_id = dataset['images'][i]['id']
-            break
+    
     return image_name,image_id
 
 def draw_img(dataset,image_numb,annote_ids):
@@ -49,15 +49,14 @@ def draw_img(dataset,image_numb,annote_ids):
         x, y = annotation[0::2],annotation[1::2] # comes in pair of [x,y,x,y,x,y], there split with even and uneven
         plt.fill(x, y,alpha=.7)
     plt.show()
-imported = False
+imported = True
 if not imported:  
-    annotation_path = 'C:/Users/Corne/Documents/GitHub/Bsc_Thesis_Instance_segmentation/preprocessing/COCO_export_Validation_3k.json'
-    image_dir = 'C:/Users/Corne/Documents/GitHub/Bsc_Thesis_Instance_segmentation/preprocessing/images/Validation/'
-    image_numb = 32
+    annotation_path = 'C:/Users/Cornelius/Documents/GitHub/Bscproject/Bsc_Thesis_Instance_segmentation/preprocessing/COCO_export.json'
+    image_dir = 'C:/Users/Cornelius/Documents/GitHub/Bscproject/Bsc_Thesis_Instance_segmentation/preprocessing/'
+    image_numb = 1
     dataset = load_coco(annotation_path)
     annote_ids = []
     for i in range(len(dataset['annotations'])):
         if dataset['annotations'][i]['image_id']==image_numb:
             annote_ids.append(i)
     draw_img(dataset,image_numb,annote_ids)
-    
