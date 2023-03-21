@@ -115,9 +115,8 @@ def extract_subwindow(original_img, new_annotation, new_id, window_size, img_id,
 ################## MAIN ##################
 
 #annotation_path = r'C:\Users\Cornelius\Documents\GitHub\Bscproject\Bsc_Thesis_Instance_segmentation\preprocessing\COCO_Test.json'
-annotation_path = r"C:\Users\admin\Downloads\DreierHSI_Mar_07_2023_13_24_Ole-Christian Galbo\Training\COCO_Training.json"
-#image_dir = 'C:/Users/Cornelius/Documents/GitHub/Bscproject/Bsc_Thesis_Instance_segmentation/preprocessing/'
-image_dir = r'C:\Users\admin\Downloads\DreierHSI_Mar_07_2023_13_24_Ole-Christian Galbo\Training\images/'
+annotation_path = r"C:\Users\Cornelius\Downloads\DreierHSI_Mar_03_2023_09_18_Ole-Christian Galbo\Training\COCO_Training.json"#image_dir = 'C:/Users/Cornelius/Documents/GitHub/Bscproject/Bsc_Thesis_Instance_segmentation/preprocessing/'
+image_dir = r'C:\Users\Cornelius\Downloads\DreierHSI_Mar_03_2023_09_18_Ole-Christian Galbo\Training\images/'
 
 
 new_annotation = empty_dict()

@@ -78,52 +78,53 @@ def coco_new_bbox(x,y,dataset,image_id,annotation_numb):
     height = max(annote[1::2])-min(annote[1::2])
     return [x,y,width,height]
 
-#annotation_path = r'C:\Users\Cornelius\Documents\GitHub\Bscproject\Bsc_Thesis_Instance_segmentation\preprocessing\COCO_Test.json'
-annotation_path = 'C:/Users/Corne/Downloads/DreierHSI_Mar_03_2023_09_18_Ole-Christian Galbo/Training/COCO_training.json'
-#image_dir = 'C:/Users/Cornelius/Documents/GitHub/Bscproject/Bsc_Thesis_Instance_segmentation/preprocessing/'
-image_dir = 'C:/Users/Corne/Downloads/DreierHSI_Mar_03_2023_09_18_Ole-Christian Galbo/Training/images/'
-dataset = load_coco(annotation_path)
-dict_coco = empty_dict()
-dict_coco['categories']=dataset['categories']
-dict_coco['info']=dataset['info']
-dict_coco['licenses']=dataset['licenses']
-for c in range(30000):
-    background = np.zeros((128,128,3),dtype = np.uint8)
-    background = cv.cvtColor(background, cv.COLOR_BGR2RGB)
-    max_tries=100
-    j=0
-    while(j<max_tries):
-        annotation_numb = np.random.randint(0,len(dataset['annotations']))
-        #annotation_numb = 3792
-        #if annotation_numb == 4485:
-        #    print("bye bye error")
-        image_name, image_id = find_image(dataset, annotation_numb)
-        bbox, annotation = load_annotation(dataset, annotation_numb, image_id)
-        cropped_im = fill_mask(dataset,image_id, annotation, image_name,image_dir)
-        height, width = cropped_im.shape[0], cropped_im.shape[1]
-        cropped = crop_from_mask(dataset, annotation_numb, cropped_im)
-        x, y, keep = find_x_y(background, cropped,annotation, height,width)
-        if keep:
-            background = overlay_on_larger_image(background,cropped,x,y)
-            dict_coco['annotations'].append({'id':coco_next_anno_id(dict_coco),
-                                  'image_id':coco_next_img_id(dict_coco),
-                                  'segmentation': [coco_new_anno_coords(dataset,image_id,annotation_numb,x,y)],
-                                  'iscrowd':0,
-                                  'bbox': coco_new_bbox(x,y,dataset,image_id,annotation_numb), #mangler x,y
-                                  'area':dataset['annotations'][annotation_numb]['area'],
-                                  'category_id':dataset['annotations'][annotation_numb]['category_id']
-                                  })
-        else:
-            pass
-        j+=1
-    background= cv.cvtColor(background, cv.COLOR_BGR2RGB)
-    cv.imwrite(f"images/Training/Synthetic_{c}.jpg",background)
-    dict_coco['images'].append({'id':c+1,
-                                'file_name': f"Synthetic_{c}.jpg",
-                                'license':1,
-                                'height':background.shape[0],
-                                'width':background.shape[1]})
-export_json(dict_coco)
+if __name__=="__main__":
+    #annotation_path = r'C:\Users\Cornelius\Documents\GitHub\Bscproject\Bsc_Thesis_Instance_segmentation\preprocessing\COCO_Test.json'
+    annotation_path = 'C:/Users/Corne/Downloads/DreierHSI_Mar_03_2023_09_18_Ole-Christian Galbo/Training/COCO_training.json'
+    #image_dir = 'C:/Users/Cornelius/Documents/GitHub/Bscproject/Bsc_Thesis_Instance_segmentation/preprocessing/'
+    image_dir = 'C:/Users/Corne/Downloads/DreierHSI_Mar_03_2023_09_18_Ole-Christian Galbo/Training/images/'
+    dataset = load_coco(annotation_path)
+    dict_coco = empty_dict()
+    dict_coco['categories']=dataset['categories']
+    dict_coco['info']=dataset['info']
+    dict_coco['licenses']=dataset['licenses']
+    for c in range(30000):
+        background = np.zeros((128,128,3),dtype = np.uint8)
+        background = cv.cvtColor(background, cv.COLOR_BGR2RGB)
+        max_tries=100
+        j=0
+        while(j<max_tries):
+            annotation_numb = np.random.randint(0,len(dataset['annotations']))
+            #annotation_numb = 3792
+            #if annotation_numb == 4485:
+            #    print("bye bye error")
+            image_name, image_id = find_image(dataset, annotation_numb)
+            bbox, annotation = load_annotation(dataset, annotation_numb, image_id)
+            cropped_im = fill_mask(dataset,image_id, annotation, image_name,image_dir)
+            height, width = cropped_im.shape[0], cropped_im.shape[1]
+            cropped = crop_from_mask(dataset, annotation_numb, cropped_im)
+            x, y, keep = find_x_y(background, cropped,annotation, height,width)
+            if keep:
+                background = overlay_on_larger_image(background,cropped,x,y)
+                dict_coco['annotations'].append({'id':coco_next_anno_id(dict_coco),
+                                      'image_id':coco_next_img_id(dict_coco),
+                                      'segmentation': [coco_new_anno_coords(dataset,image_id,annotation_numb,x,y)],
+                                      'iscrowd':0,
+                                      'bbox': coco_new_bbox(x,y,dataset,image_id,annotation_numb), #mangler x,y
+                                      'area':dataset['annotations'][annotation_numb]['area'],
+                                      'category_id':dataset['annotations'][annotation_numb]['category_id']
+                                      })
+            else:
+                pass
+            j+=1
+        background= cv.cvtColor(background, cv.COLOR_BGR2RGB)
+        cv.imwrite(f"images/Training/Synthetic_{c}.jpg",background)
+        dict_coco['images'].append({'id':c+1,
+                                    'file_name': f"Synthetic_{c}.jpg",
+                                    'license':1,
+                                    'height':background.shape[0],
+                                    'width':background.shape[1]})
+    export_json(dict_coco)
 # =============================================================================
 # ov = np.zeros((300, 300))
 # new_obj = np.zeros((300, 300))
