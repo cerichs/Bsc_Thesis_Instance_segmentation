@@ -1,3 +1,10 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Tue Mar 21 11:06:01 2023
+
+@author: admin
+"""
+
 
 
 import os
@@ -13,108 +20,19 @@ from skimage.draw import polygon
 
 
 
+def mask_in_window(mask, window_top_x,window_bottom_x, window_top_y, window_bottom_y):
+    
+    is_in = False
+    for i in range(len(mask[0::2])) :
+        if (window_top_x <= mask[0::2][i] <= window_bottom_x) and  (window_top_y <= mask[1::2][i] <= window_bottom_y):
+            is_in = True
+        else:
+            continue
+    return is_in
 
-def edge_grain(annotation,height,width,x,y,larger_image):
-    if (max(annotation[0][1::2])>=height-1):
-        return x,(larger_image.shape[0]-(max(annotation[0][1::2])-min(annotation[0][1::2])))-1
-    elif (max(annotation[0][0::2])>=width-1):
-        return (larger_image.shape[1]-(max(annotation[0][0::2])-min(annotation[0][0::2])))-1,y
-    elif (min(annotation[0][1::2])<=1):
-        return x,1
-    elif(min(annotation[0][0::2])<=1):
-        return 1,y
-    elif (max(annotation[0][1::2])>=height-1) and (max(annotation[0][0::2])>=width-1):
-        return (larger_image.shape[1]-(max(annotation[0][0::2])-min(annotation[0][0::2])))-1, (larger_image.shape[0]-(max(annotation[0][1::2])-min(annotation[0][1::2])))-1
-    elif (min(annotation[0][1::2])<=1) and (min(annotation[0][0::2])<=1):
-        return 1,1
-    else:
-        return x,y #ændre i masken hvis kantkorn
+    
 
-def coco_next_anno_id(coco_dict):
-    return len(coco_dict['annotations'])+1
-
-def coco_next_img_id(coco_dict):
-    return len(coco_dict['images'])+1
-
-
-def coco_new_anno_coords(dataset,image_id,annotation_numb,x,y):
-    width = min(dataset['annotations'][annotation_numb]['segmentation'][0][0::2])
-    height = min(dataset['annotations'][annotation_numb]['segmentation'][0][1::2])
-    new_annote = [None]*len(dataset['annotations'][annotation_numb]['segmentation'][0]) # new list the same size
-    new_annote[0::2] = [z - width for z in dataset['annotations'][annotation_numb]['segmentation'][0][0::2]] # rescale to start at 0
-    new_annote[1::2] = [z - height for z in dataset['annotations'][annotation_numb]['segmentation'][0][1::2]] # rescale to start at 0
-    new_annote[0::2] = [z + x for z in new_annote[0::2]] # rescale for new img
-    new_annote[1::2] = [z + y for z in new_annote[1::2]] # rescale for new img
-    return new_annote
-
-def coco_new_bbox(x,y,dataset,image_id,annotation_numb): #giv maske
-    annote = coco_new_anno_coords(dataset,image_id,annotation_numb,x,y)
-    width = max(annote[0::2])-min(annote[0::2])
-    height = max(annote[1::2])-min(annote[1::2])
-    return [x,y,width,height]
-
-
-
-
-
-
-
-
-def generate_subwindow_image(dataset, image_dir, size=(128, 128, 3)):
-    annotation_numb = np.random.randint(0, len(dataset['annotations']))
-    image_name, image_id = find_image(dataset, annotation_numb)
-    image_path = os.path.join(image_dir, image_name)
-    image = cv.imread(image_path)
-    image = cv.cvtColor(image, cv.COLOR_BGR2RGB)
-    subwindow, x, y = get_subwindow(image, size=(size[0], size[1]))
-    masks = []
-    for ann in dataset['annotations']:
-        if ann['image_id'] == image_id:
-            rr, cc = polygon(ann['segmentation'][0][1::2], ann['segmentation'][0][0::2])
-            mask = np.zeros_like(image[:, :, 0], dtype=np.uint8)
-            mask[rr, cc] = 1
-            mask = mask[y:y + size[1], x:x + size[0]]
-            masks.append(mask)
-    return subwindow, masks
-
-
-
-
-
-
-def create_subwindow_image(original_image, window_size, annotations=None):
-    if annotations is None:
-        annotations = []
-
-    subwindow = np.zeros(window_size, dtype=np.uint8)
-    subwindow = cv.cvtColor(subwindow, cv.COLOR_BGR2RGB)
-
-    grain_mask = create_grain_mask(annotations, original_image.shape)
-    cropped_image = crop_grain_from_mask(original_image, grain_mask)
-    x, y = find_non_overlapping_position(subwindow, cropped_image)
-
-    if x is not None and y is not None:
-        subwindow = overlay_on_larger_image(subwindow, cropped_image, x, y)
-
-    return subwindow
-
-def create_grain_mask(annotation, image_shape):
-    rr, cc = polygon(annotation[1::2], annotation[0::2])
-    mask = np.zeros(image_shape[:2], dtype=bool)
-    mask[rr, cc] = True
-    return mask
-
-def crop_grain_from_mask(image, mask):
-    y_min, y_max, x_min, x_max = find_bounding_box(mask)
-    cropped_image = image[y_min:y_max, x_min:x_max].copy()
-    cropped_image[~mask[y_min:y_max, x_min:x_max]] = 0
-    return cropped_image
-
-
-
-
-
-def extract_subwindow(original_img, window_size, img_id, image_dir, dataset):
+def extract_subwindow(original_img, new_annotation, window_size, img_id, image_dir, dataset):
     window_height, window_width = window_size
 
     top_left_x = np.random.randint(0, original_img.shape[1] - window_width)
@@ -125,57 +43,122 @@ def extract_subwindow(original_img, window_size, img_id, image_dir, dataset):
 
     subwindow = original_img[top_left_y:bottom_right_y, top_left_x:bottom_right_x]
 
-    new_annotation = empty_dict()
-    
+    #new_annotation = empty_dict()
+    mask = np.zeros((window_height, window_width), dtype=np.uint8)
     
     for ann in dataset['annotations']:
         if ann['image_id'] == image_id:
-            new_coords = []
-            for coord_x, coord_y in zip(ann['segmentation'][0][0::2], ann['segmentation'][0][1::2]):
-                new_x = coord_x - top_left_x
-                new_y = coord_y - top_left_y
-                
-                new_coords.extend([new_x, new_y])
-                
-                """
-                if 0 <= new_x < window_width and 0 <= new_y < window_height:
-                    new_coords.extend([new_x, new_y])
-                """
-                #if new_x < 0:
-                    
-            if new_coords[0::2] < 0 & new_coords[1::2] < 0:
-                x_root = np.array(new_coords[0::2])
-                y_root = np.array(new_coords[1::2])
-                
-                
-                x_root = np.where(x_root==0)[0]
-                y_root = np.where(y_root==0)[0]
-                
-                if x_root < window_width and y_root < window_height:
-                    
-                
             
-            if new_coords[1::2] < 0:
-                y_root = new_coords[1::2].index(0)
-                y_root = np.array(y_root)
+            if mask_in_window(ann['segmentation'][0], top_left_x, bottom_right_x, top_left_y, bottom_right_y):
                 
+                new_coords = []
+                dup_dict = {}
+                for coord_x, coord_y in zip(ann['segmentation'][0][0::2], ann['segmentation'][0][1::2]):
+                    new_x = coord_x - top_left_x
+                    new_y = coord_y - top_left_y
+                    
+                    
+                    if (0 <= new_x <= window_width) and (0 <= new_y <= window_height):
+                        new_coords.extend([new_x, new_y])
+                    
+                if len(new_coords) > 0:
+    
+                    min_x, min_y = min(new_coords[::2]), min(new_coords[1::2])
+                    max_x, max_y = max(new_coords[::2]), max(new_coords[1::2])
+                    cropped_bbox = [min_x, min_y, max_x - min_x, max_y - min_y]
+                    
+                new_coords_coords = []
+                for coord_x, coord_y in zip(ann['segmentation'][0][0::2], ann['segmentation'][0][1::2]):
+                    new_x = coord_x - top_left_x
+                    new_y = coord_y - top_left_y
+                    #Do not extend mask outside the subwindow
+                    #Wall-E-algorithm
+                    #Fills in the mask from edge grains
+                    if new_x <= 0:
+                        new_x = 0
+                    
+                    elif new_x > window_width:
+                        new_x = window_width
+                    
+                    if new_y <= 0:
+                        new_y = 0
+                    
+                    elif new_y > window_height:
+                        new_y = window_height
+                        
+                        
+                        
+                    dup_dict[(new_x,new_y)] = 0
+                    
+                for x, y in dup_dict.keys():
+                    if  (min_x <= x <= max_x) and (min_y <= y <= max_y):
+                        new_coords_coords.extend([x, y])
+                    else:
+                        continue
+                    
+                if len(new_coords_coords) > 0:
+    
+                    min_x, min_y = min(new_coords_coords[::2]), min(new_coords_coords[1::2])
+                    max_x, max_y = max(new_coords_coords[::2]), max(new_coords_coords[1::2])
+                    cropped_bbox_bbox = [min_x, min_y, max_x - min_x, max_y - min_y]
+                   
+
+                    new_annotation["annotations"].append({'id': ann['id'],
+                                           'image_id': ann['image_id'],
+                                           'segmentation': [new_coords_coords],
+                                           'iscrowd': ann['iscrowd'],
+                                           'bbox': cropped_bbox_bbox,
+                                           'area': ann['area'],
+                                           'category_id': ann['category_id']})
+                   
+                    rr, cc = polygon(new_coords[1::2], new_coords[::2], shape=(window_height, window_width))
+                    mask[rr, cc] = 1
                 
-            ann["bbox"][0] = ann["bbox"][0] - top_left_x
-            ann["bbox"][1] = ann["bbox"][1] - top_left_y 
+                # plot every grain kernels contour
+                #plt.plot(new_coords_coords[0::2], new_coords_coords[1::2], "o")
+                #plt.show()
+                
+                """
+                for mask in range(len(new_coords)):
+                    for x_idx, y_idx in zip(range(len(new_coords[mask][0::2])), range(len(new_coords[mask][0::2]))):
+                        
+                        x = new_coords[mask][0::2][x_idx]
+                        y = new_coords[mask][1::2][y_idx]
+                        
+                        legal = [(x+1, y),(x-1, y),(x, y+1),(x, y-1),(x+1, y+1),(x+1, y-1), (x-1, y+1),(x-1, y-1)]
+                        
+                        if (new_coords[mask][0::2][x_idx+1], new_coords[mask][1::2][y_idx+1]) in legal:
+                            continue
+                        
+                        else:
+                            corig = np.argmin()
+                            new_coords.extend([new_coords[mask][0::2][x_idx+1], new_y])
+                    
+                            
+                        #If the x's touches the edge it should fill in the gap 
+                        # i.e. if the x+1 coordinate is >1 larger than x than it is a edge 
+                        # and it should fill in
+                        if abs(new_coords[mask][0::2][x+1] - new_coords[mask][0::2][x]) > 1:
+                            
+                            print(range(abs(new_coords[mask][0::2][x+1] - new_coords[mask][0::2][x])))
+                        else:
+                            continue
+                        
+                """
+                #ann["bbox"][0] = ann["bbox"][0] - top_left_x
+                #ann["bbox"][1] = ann["bbox"][1] - top_left_y 
 
 
+                """
+                if len(new_coords) > 0:
+    
+                    min_x, min_y = min(new_coords[::2]), min(new_coords[1::2])
+                    max_x, max_y = max(new_coords[::2]), max(new_coords[1::2])
+                    cropped_bbox = [min_x, min_y, max_x - min_x, max_y - min_y]
+                """
+                    
 
-            if len(new_coords) > 0:
-                new_annotation["annotations"].append({'id': ann['id'],
-                                       'image_id': ann['image_id'],
-                                       'segmentation': [new_coords],
-                                       'iscrowd': ann['iscrowd'],
-                                       'bbox': ann['bbox'],
-                                       'area': ann['area'],
-                                       'category_id': ann['category_id']})
-
-
-
+    #print(ann["segmentation"])
 
 
     new_annotation['images'].append({'id':img_id,
@@ -183,10 +166,12 @@ def extract_subwindow(original_img, window_size, img_id, image_dir, dataset):
                             'license':1,
                             'height':subwindow.shape[0],
                             'width':subwindow.shape[1]})
-    
+   
     
 
     return subwindow, new_annotation
+    #return subwindow, new_annotation, mask
+
 
 
 ################## MAIN ##################
@@ -196,52 +181,52 @@ annotation_path = r"C:\Users\admin\Downloads\DreierHSI_Mar_07_2023_13_24_Ole-Chr
 #image_dir = 'C:/Users/Cornelius/Documents/GitHub/Bscproject/Bsc_Thesis_Instance_segmentation/preprocessing/'
 image_dir = r'C:\Users\admin\Downloads\DreierHSI_Mar_07_2023_13_24_Ole-Christian Galbo\Training\images/'
 
+
+new_annotation = empty_dict()
 dataset = load_coco(annotation_path)
-annotation_numb = 1   ### choose specific image
 
-# Get image-info from JSON
-image_name, image_id = find_image(dataset, annotation_numb)
-bbox, annotation = load_annotation(dataset, annotation_numb, image_id)
-image_path = os.path.join(image_dir, image_name)
-
-
-#BGR to RGB
-img = cv.imread(image_path)
-img = cv.cvtColor(img, cv.COLOR_BGR2RGB)
-
-
-subwindow_size = (128, 128)
-
-subwindow, new_annotation = extract_subwindow(img, subwindow_size, image_id, image_dir, dataset)
-c = annotation_numb
-
+for c in range(1000):
+    
+    image_id = np.random.randint(0, len(dataset["images"]))   ### choose random image
+    
+    image_name = dataset["images"][image_id]["file_name"]
+    image_id = image_id + 1
+    
+    # Get image-info from JSON
+    image_path = os.path.join(image_dir, image_name)
+    
+    
+    #BGR to RGB
+    img = cv.imread(image_path)
+    img = cv.cvtColor(img, cv.COLOR_BGR2RGB)
+    
+    
+    subwindow_size = (256, 256)
+    
+    subwindow, new_annotation = extract_subwindow(img, new_annotation, subwindow_size, image_id, image_dir, dataset)
+    #subwindow, new_annotation, mask = extract_subwindow(img, subwindow_size, image_id, image_dir, dataset)
+    
+    #c = image_id
+    
+    subwindow = cv.cvtColor(subwindow, cv.COLOR_BGR2RGB)
+    cv.imwrite(f"images/window{c}.jpg",subwindow)
+    
 export_json(new_annotation)
-
-subwindow = cv.cvtColor(subwindow, cv.COLOR_BGR2RGB)
-cv.imwrite(f"window{c}.jpg",subwindow)
-
-
-image_dir = "C:/Users/admin/Desktop/bachelor/Bsc_Thesis_Instance_segmentation/preprocessing/"
-#cv.destroyWindow(f"/window{c}.jpg")
-
-annote_ids = []
-for i in range(len(new_annotation['annotations'])):
-    if new_annotation['annotations'][i]['image_id']==image_id:
-        annote_ids.append(i)
-draw_img(new_annotation,image_id,annote_ids, image_dir)
-# Generate the sub-window image
-#subwindow_image = create_subwindow_image(img, annotations=annotation)
-
-
-
-
-# Generate the sub-window image
-#subwindow_image = create_subwindow_image(large_image, window_size=subwindow_size annotations=annotations)
-
-
-#, masks = generate_subwindow_image(dataset, image_dir, size=subwindow_size)
-
-
+    
+    
+if False: 
+    image_dir = "C:/Users/admin/Desktop/bachelor/Bsc_Thesis_Instance_segmentation/preprocessing/"
+    
+    annote_ids = []
+    for i in range(len(new_annotation['annotations'])):
+        if new_annotation['annotations'][i]['image_id']==image_id:
+            annote_ids.append(i)
+    c = image_id
+    
+    subwindow = cv.cvtColor(subwindow, cv.COLOR_BGR2RGB)
+    cv.imwrite(f"window{c}.jpg",subwindow)
+        
+    draw_img(new_annotation,image_id,annote_ids, image_dir)
 
 
 

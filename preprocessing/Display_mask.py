@@ -38,7 +38,7 @@ def find_image(dataset,annotation_numb):
     return image_name,image_id
 
 def draw_img(dataset,image_numb,annote_ids, image_dir):
-    image_name,image_id = find_image(dataset,image_numb)
+    image_name,image_id = find_image(dataset,annote_ids[0])
     img = plt.imread(image_dir+image_name)
     fix,ax=plt.subplots()
     ax.imshow(img)
