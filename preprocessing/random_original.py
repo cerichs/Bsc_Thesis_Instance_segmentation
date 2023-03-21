@@ -11,6 +11,7 @@ import os
 from Display_mask import load_coco, load_annotation, find_image, draw_img
 from crop_from_mask import crop_from_mask, fill_mask,overlay_on_larger_image
 from watershed_2_coco import empty_dict, export_json
+from simple_object_placer import coco_next_anno_id
 import numpy as np
 import matplotlib.pyplot as plt
 import cv2 as cv
@@ -29,7 +30,7 @@ def mask_in_window(mask, window_top_x,window_bottom_x, window_top_y, window_bott
 
     
 
-def extract_subwindow(original_img, new_annotation, window_size, img_id, image_dir, dataset):
+def extract_subwindow(original_img, new_annotation, new_id, window_size, img_id, image_dir, dataset):
     window_height, window_width = window_size
 
     top_left_x = np.random.randint(0, original_img.shape[1] - window_width)
@@ -42,7 +43,7 @@ def extract_subwindow(original_img, new_annotation, window_size, img_id, image_d
 
     #new_annotation = empty_dict()
     mask = np.zeros((window_height, window_width), dtype=np.uint8)
-    
+
     for ann in dataset['annotations']:
         if ann['image_id'] == image_id:
             
@@ -97,13 +98,15 @@ def extract_subwindow(original_img, new_annotation, window_size, img_id, image_d
                     cropped_bbox_bbox = [min_x, min_y, max_x - min_x, max_y - min_y]
                    
 
-                    new_annotation["annotations"].append({'id': ann['id'],
-                                           'image_id': ann['image_id'],
+                    new_annotation["annotations"].append({'id': coco_next_anno_id(new_annotation),
+                                           'image_id': f"window{new_id}.jpg",
                                            'segmentation': [new_coords_coords],
                                            'iscrowd': ann['iscrowd'],
                                            'bbox': cropped_bbox_bbox,
                                            'area': ann['area'],
                                            'category_id': ann['category_id']})
+                    
+                    
 
     return subwindow, new_annotation
 
@@ -140,7 +143,7 @@ for c in range(1000):
     
     subwindow_size = (256, 256)
     
-    subwindow, new_annotation = extract_subwindow(img, new_annotation, subwindow_size, image_id, image_dir, dataset)
+    subwindow, new_annotation = extract_subwindow(img, new_annotation, c, subwindow_size, image_id, image_dir, dataset)
     #subwindow, new_annotation, mask = extract_subwindow(img, subwindow_size, image_id, image_dir, dataset)
     
     #c = image_id
