@@ -161,11 +161,6 @@ def extract_subwindow(original_img, new_annotation, window_size, img_id, image_d
     #print(ann["segmentation"])
 
 
-    new_annotation['images'].append({'id':img_id,
-                            'file_name': f"window{img_id}.jpg",
-                            'license':1,
-                            'height':subwindow.shape[0],
-                            'width':subwindow.shape[1]})
    
     
 
@@ -184,6 +179,8 @@ image_dir = r'C:\Users\admin\Downloads\DreierHSI_Mar_07_2023_13_24_Ole-Christian
 
 new_annotation = empty_dict()
 dataset = load_coco(annotation_path)
+new_annotation["categories"] = dataset["categories"]
+
 
 for c in range(1000):
     
@@ -210,6 +207,12 @@ for c in range(1000):
     
     subwindow = cv.cvtColor(subwindow, cv.COLOR_BGR2RGB)
     cv.imwrite(f"images/window{c}.jpg",subwindow)
+    
+    new_annotation['images'].append({'id':c,
+                            'file_name': f"window{c}.jpg",
+                            'license':1,
+                            'height':subwindow.shape[0],
+                            'width':subwindow.shape[1]})
     
 export_json(new_annotation)
     
