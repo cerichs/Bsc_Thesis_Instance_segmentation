@@ -5,10 +5,8 @@ Created on Tue Mar 21 11:06:01 2023
 @author: admin
 """
 
-
-
 import os
-os.chdir(r"C:\Users\admin\Desktop\bachelor\Bsc_Thesis_Instance_segmentation\preprocessing")
+#os.chdir(r"C:\Users\admin\Desktop\bachelor\Bsc_Thesis_Instance_segmentation\preprocessing")
 
 from Display_mask import load_coco, load_annotation, find_image, draw_img
 from crop_from_mask import crop_from_mask, fill_mask,overlay_on_larger_image
@@ -21,7 +19,6 @@ from skimage.draw import polygon
 
 
 def mask_in_window(mask, window_top_x,window_bottom_x, window_top_y, window_bottom_y):
-    
     is_in = False
     for i in range(len(mask[0::2])) :
         if (window_top_x <= mask[0::2][i] <= window_bottom_x) and  (window_top_y <= mask[1::2][i] <= window_bottom_y):
@@ -57,7 +54,6 @@ def extract_subwindow(original_img, new_annotation, window_size, img_id, image_d
                     new_x = coord_x - top_left_x
                     new_y = coord_y - top_left_y
                     
-                    
                     if (0 <= new_x <= window_width) and (0 <= new_y <= window_height):
                         new_coords.extend([new_x, new_y])
                     
@@ -85,9 +81,7 @@ def extract_subwindow(original_img, new_annotation, window_size, img_id, image_d
                     
                     elif new_y > window_height:
                         new_y = window_height
-                        
-                        
-                        
+
                     dup_dict[(new_x,new_y)] = 0
                     
                 for x, y in dup_dict.keys():
@@ -110,62 +104,8 @@ def extract_subwindow(original_img, new_annotation, window_size, img_id, image_d
                                            'bbox': cropped_bbox_bbox,
                                            'area': ann['area'],
                                            'category_id': ann['category_id']})
-                   
-                    rr, cc = polygon(new_coords[1::2], new_coords[::2], shape=(window_height, window_width))
-                    mask[rr, cc] = 1
-                
-                # plot every grain kernels contour
-                #plt.plot(new_coords_coords[0::2], new_coords_coords[1::2], "o")
-                #plt.show()
-                
-                """
-                for mask in range(len(new_coords)):
-                    for x_idx, y_idx in zip(range(len(new_coords[mask][0::2])), range(len(new_coords[mask][0::2]))):
-                        
-                        x = new_coords[mask][0::2][x_idx]
-                        y = new_coords[mask][1::2][y_idx]
-                        
-                        legal = [(x+1, y),(x-1, y),(x, y+1),(x, y-1),(x+1, y+1),(x+1, y-1), (x-1, y+1),(x-1, y-1)]
-                        
-                        if (new_coords[mask][0::2][x_idx+1], new_coords[mask][1::2][y_idx+1]) in legal:
-                            continue
-                        
-                        else:
-                            corig = np.argmin()
-                            new_coords.extend([new_coords[mask][0::2][x_idx+1], new_y])
-                    
-                            
-                        #If the x's touches the edge it should fill in the gap 
-                        # i.e. if the x+1 coordinate is >1 larger than x than it is a edge 
-                        # and it should fill in
-                        if abs(new_coords[mask][0::2][x+1] - new_coords[mask][0::2][x]) > 1:
-                            
-                            print(range(abs(new_coords[mask][0::2][x+1] - new_coords[mask][0::2][x])))
-                        else:
-                            continue
-                        
-                """
-                #ann["bbox"][0] = ann["bbox"][0] - top_left_x
-                #ann["bbox"][1] = ann["bbox"][1] - top_left_y 
-
-
-                """
-                if len(new_coords) > 0:
-    
-                    min_x, min_y = min(new_coords[::2]), min(new_coords[1::2])
-                    max_x, max_y = max(new_coords[::2]), max(new_coords[1::2])
-                    cropped_bbox = [min_x, min_y, max_x - min_x, max_y - min_y]
-                """
-                    
-
-    #print(ann["segmentation"])
-
-
-   
-    
 
     return subwindow, new_annotation
-    #return subwindow, new_annotation, mask
 
 
 
@@ -230,63 +170,3 @@ if False:
     cv.imwrite(f"window{c}.jpg",subwindow)
         
     draw_img(new_annotation,image_id,annote_ids, image_dir)
-
-
-
-"""
-for c in range(30000):
-    background = np.zeros((128,128,3),dtype = np.uint8)
-    background = cv.cvtColor(background, cv.COLOR_BGR2RGB)
-    max_tries=100
-    j=0
-    while(j<max_tries):
-        annotation_numb = np.random.randint(0,len(dataset['annotations']))
-        #annotation_numb = 3792
-        #if annotation_numb == 4485:
-        #    print("bye bye error")
-        image_name, image_id = find_image(dataset, annotation_numb)
-        bbox, annotation = load_annotation(dataset, annotation_numb, image_id)
-        cropped_im = fill_mask(dataset,image_id, annotation, image_name,image_dir)
-        height, width = cropped_im.shape[0], cropped_im.shape[1]
-        
-        
-        
-        cropped = crop_from_mask(dataset, annotation_numb, cropped_im)
-        x, y, keep = find_x_y(background, cropped,annotation, height,width)
-        if keep:
-            background = overlay_on_larger_image(background,cropped,x,y)
-            dict_coco['annotations'].append({'id':coco_next_anno_id(dict_coco),
-                                  'image_id':coco_next_img_id(dict_coco),
-                                  'segmentation': [coco_new_anno_coords(dataset,image_id,annotation_numb,x,y)],
-                                  'iscrowd':0,
-                                  'bbox': coco_new_bbox(x,y,dataset,image_id,annotation_numb), #mangler x,y
-                                  'area':dataset['annotations'][annotation_numb]['area'],
-                                  'category_id':dataset['annotations'][annotation_numb]['category_id']
-                                  })
-        else:
-            pass
-        j+=1
-    background= cv.cvtColor(background, cv.COLOR_BGR2RGB)
-    cv.imwrite(f"images/Training/Synthetic_{c}.jpg",background)
-    dict_coco['images'].append({'id':c+1,
-                                'file_name': f"Synthetic_{c}.jpg",
-                                'license':1,
-                                'height':background.shape[0],
-                                'width':background.shape[1]})
-export_json(dict_coco)
-# =============================================================================
-# ov = np.zeros((300, 300))
-# new_obj = np.zeros((300, 300))
-# new_obj[10:20, 5:25] = 1
-# 
-# for i in range(700):
-#     x, y = np.random.randint(0,300), np.random.randint(0,300)
-#     if np.sum(ov[x:x+10,y:y+20])==0:
-#         ov[x:x+10,y:y+20]=1
-#     else:
-#         continue
-# 
-# plt.imshow(ov)
-# plt.show()
-# =============================================================================
-"""
