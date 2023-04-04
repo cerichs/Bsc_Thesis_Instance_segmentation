@@ -92,9 +92,9 @@ if __name__=="__main__":
     #           [Rye_midsummer, Wheat_H1, Wheat_H3,  Wheat_H4,   Wheat_H5, Wheat_Halland,  Wheat_Oland, Wheat_Spelt, Foreign]
                 
     for c in range(1000):
-        background = np.zeros((480,480,3),dtype = np.uint8)
+        background = np.zeros((256,256,3),dtype = np.uint8)
         background = cv.cvtColor(background, cv.COLOR_BGR2RGB)
-        max_tries=500
+        max_tries=200
         class_check= [0]*8
         j=0
         while(j<max_tries):
@@ -109,7 +109,7 @@ if __name__=="__main__":
             height, width = cropped_im.shape[0], cropped_im.shape[1]
             cropped = crop_from_mask(dataset, annotation_numb, cropped_im)
             x, y, keep = find_x_y(background, cropped,annotation, height,width)
-            if keep and (dataset['annotations'][annotation_numb]['category_id']!=1412700) and (class_check[class_list.index(dataset['annotations'][annotation_numb]['category_id'])] < 30):
+            if keep and (dataset['annotations'][annotation_numb]['category_id']!=1412700) and (class_check[class_list.index(dataset['annotations'][annotation_numb]['category_id'])] < 9):
                 background = overlay_on_larger_image(background,cropped,x,y)
                 dict_coco['annotations'].append({'id':coco_next_anno_id(dict_coco),
                                       'image_id':coco_next_img_id(dict_coco),
@@ -130,7 +130,7 @@ if __name__=="__main__":
                                     'license':1,
                                     'height':background.shape[0],
                                     'width':background.shape[1]})
-    export_json(dict_coco)
+    export_json(dict_coco,"COCO_synthetic_2k.json")
 # =============================================================================
 # ov = np.zeros((300, 300))
 # new_obj = np.zeros((300, 300))

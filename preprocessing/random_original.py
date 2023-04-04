@@ -184,7 +184,7 @@ if __name__ == "__main__":
                 #img = cv.cvtColor(img, cv.COLOR_BGR2RGB)
                 
                 
-                subwindow_size = (480, 480)
+                subwindow_size = (256, 256)
                 
                 subwindow, new_annotation = extract_subwindow(img, new_annotation, c, subwindow_size, image_id, image_dir, dataset, plot_mask=False)
                 #subwindow, new_annotation, mask = extract_subwindow(img, subwindow_size, image_id, image_dir, dataset)
@@ -214,6 +214,6 @@ if __name__ == "__main__":
         #print(f"The ground-truth amount of kernels in the image is:  {ground_truth}")
         
         
-    export_json(new_annotation)
+    export_json(new_annotation,"COCO_windowed_2k.json")
     
    
