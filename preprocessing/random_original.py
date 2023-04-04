@@ -6,7 +6,7 @@ Created on Tue Mar 21 11:06:01 2023
 """
 
 import os
-#os.chdir(r"C:\Users\admin\Desktop\bachelor\Bsc_Thesis_Instance_segmentation\preprocessing")
+os.chdir(r"C:\Users\admin\Desktop\bachelor\Bsc_Thesis_Instance_segmentation\preprocessing")
 
 from Display_mask import load_coco, load_annotation, find_image, draw_img
 from crop_from_mask import crop_from_mask, fill_mask,overlay_on_larger_image
@@ -30,7 +30,7 @@ def mask_in_window(mask, window_top_x,window_bottom_x, window_top_y, window_bott
 
     
 
-def extract_subwindow(original_img, new_annotation, new_id, window_size, img_id, image_dir, dataset):
+def extract_subwindow(original_img, new_annotation, new_id, window_size, img_id, image_dir, dataset, plot_mask=False):
     window_height, window_width = window_size
 
     top_left_x = np.random.randint(0, original_img.shape[1] - window_width)
@@ -106,69 +106,92 @@ def extract_subwindow(original_img, new_annotation, new_id, window_size, img_id,
                                            'area': ann['area'],
                                            'category_id': ann['category_id']})
                     
-                    
-
-    return subwindow, new_annotation
-
-
-
-################## MAIN ##################
-
-#annotation_path = r'C:\Users\Cornelius\Documents\GitHub\Bscproject\Bsc_Thesis_Instance_segmentation\preprocessing\COCO_Test.json'
-annotation_path = r"C:\Users\admin\Downloads\DreierHSI_Mar_07_2023_13_24_Ole-Christian Galbo\Training\COCO_Training.json"#image_dir = 'C:/Users/Cornelius/Documents/GitHub/Bscproject/Bsc_Thesis_Instance_segmentation/preprocessing/'
-image_dir = r"C:\Users\admin\Downloads\DreierHSI_Mar_07_2023_13_24_Ole-Christian Galbo\Training\images"
-
-
-new_annotation = empty_dict()
-dataset = load_coco(annotation_path)
-new_annotation["categories"] = dataset["categories"]
-
-
-for c in range(1000):
     
-    image_id = np.random.randint(0, len(dataset["images"]))   ### choose random image
-    
-    image_name = dataset["images"][image_id]["file_name"]
-    image_id = image_id + 1
-    
-    # Get image-info from JSON
-    image_path = os.path.join(image_dir, image_name)
-    
-    
-    #BGR to RGB
-    img = cv.imread(image_path)
-    img = cv.cvtColor(img, cv.COLOR_BGR2RGB)
-    
-    
-    subwindow_size = (256, 256)
-    
-    subwindow, new_annotation = extract_subwindow(img, new_annotation, c, subwindow_size, image_id, image_dir, dataset)
-    #subwindow, new_annotation, mask = extract_subwindow(img, subwindow_size, image_id, image_dir, dataset)
-    
-    #c = image_id
-    
-    subwindow = cv.cvtColor(subwindow, cv.COLOR_BGR2RGB)
-    cv.imwrite(f"images/window{c}.jpg",subwindow)
-    
-    new_annotation['images'].append({'id':c,
-                            'file_name': f"window{c}.jpg",
+    new_annotation['images'].append({'id':new_id,
+                            'file_name': f"window{new_id}.jpg",
                             'license':1,
                             'height':subwindow.shape[0],
                             'width':subwindow.shape[1]})
     
-export_json(new_annotation)
-    
-    
-if False: 
-    image_dir = "C:/Users/admin/Desktop/bachelor/Bsc_Thesis_Instance_segmentation/preprocessing/"
-    
-    annote_ids = []
-    for i in range(len(new_annotation['annotations'])):
-        if new_annotation['annotations'][i]['image_id']==image_id:
-            annote_ids.append(i)
-    c = image_id
     
     subwindow = cv.cvtColor(subwindow, cv.COLOR_BGR2RGB)
-    cv.imwrite(f"window{c}.jpg",subwindow)
+    cv.imwrite(f"images/window{new_id}.jpg",subwindow)
+
+    if plot_mask == True:
+        annote_ids = []
         
-    draw_img(new_annotation,image_id,annote_ids, image_dir)
+        #print (new_annotation['annotations'] )
+        for i in range(len(new_annotation['annotations'])):
+            #print(i)
+            if new_annotation['annotations'][i]['image_id']==new_id:
+                #print(image_id)
+                print(i)
+                annote_ids.append(i)
+            else:
+                continue
+        
+        image_dir2 = r"C:\Users\admin\Desktop\bachelor\Bsc_Thesis_Instance_segmentation\preprocessing\images/"
+        draw_img(new_annotation,new_id, annote_ids, image_dir2)
+        
+    return subwindow, new_annotation
+
+
+
+if __name__ == "__main__":
+
+    #annotation_path = r'C:\Users\Cornelius\Documents\GitHub\Bscproject\Bsc_Thesis_Instance_segmentation\preprocessing\COCO_Test.json'
+    annotation_path = r"C:\Users\admin\Downloads\DreierHSI_Mar_07_2023_13_24_Ole-Christian Galbo\Training\COCO_Training.json"#image_dir = 'C:/Users/Cornelius/Documents/GitHub/Bscproject/Bsc_Thesis_Instance_segmentation/preprocessing/'
+    image_dir = r"C:\Users\admin\Downloads\DreierHSI_Mar_07_2023_13_24_Ole-Christian Galbo\Training\images"
+    
+    
+    new_annotation = empty_dict()
+    dataset = load_coco(annotation_path)
+    new_annotation["categories"] = dataset["categories"]
+    
+    
+    for c in range(10):
+        
+        image_id = np.random.randint(0, len(dataset["images"]))   ### choose random image
+        
+        image_name = dataset["images"][image_id]["file_name"]
+        image_id = image_id + 1
+        
+        # Get image-info from JSON
+        image_path = os.path.join(image_dir, image_name)
+        
+        
+        #BGR to RGB
+        img = cv.imread(image_path)
+        img = cv.cvtColor(img, cv.COLOR_BGR2RGB)
+        
+        
+        subwindow_size = (256, 256)
+        
+        subwindow, new_annotation = extract_subwindow(img, new_annotation, c, subwindow_size, image_id, image_dir, dataset, plot_mask=True)
+        #subwindow, new_annotation, mask = extract_subwindow(img, subwindow_size, image_id, image_dir, dataset)
+        
+        #c = image_id
+        
+        subwindow = cv.cvtColor(subwindow, cv.COLOR_BGR2RGB)
+        cv.imwrite(f"images/window{c}.jpg",subwindow)
+        
+        ### Extracting name of the particular grain-type and counting instances in image
+        ground_truth = 0
+        name = []
+        for annotations in new_annotation["annotations"]:
+            if annotations["image_id"]==c:
+                ground_truth += 1
+                for categories in new_annotation["categories"]:
+                    if categories["id"] == annotations["category_id"]:
+                        #print(annotations["category_id"])
+                        name.append(categories["name"])
+        name = set(name)
+        print("")
+        print(f"The following grain-type being analysed is:  {name}   with image_id:  {image_id}")
+        print("")
+        print(f"The ground-truth amount of kernels in the image is:  {ground_truth}")
+        
+        
+    export_json(new_annotation)
+    
+   
