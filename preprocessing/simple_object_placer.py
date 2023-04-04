@@ -35,7 +35,7 @@ def find_x_y(larger_image,smaller_image,annotation,height,width):
             run = False
             keep = True
         count+=1
-        if count>100:
+        if count>50:
             run = False
             keep = False
     return x, y, keep
@@ -80,21 +80,26 @@ def coco_new_bbox(x,y,dataset,image_id,annotation_numb):
 
 if __name__=="__main__":
     #annotation_path = r'C:\Users\Cornelius\Documents\GitHub\Bscproject\Bsc_Thesis_Instance_segmentation\preprocessing\COCO_Test.json'
-    annotation_path = 'C:/Users/Corne/Downloads/DreierHSI_Mar_03_2023_09_18_Ole-Christian Galbo/Training/COCO_training.json'
+    annotation_path = 'C:/Users/Cornelius/Downloads/DreierHSI_Mar_03_2023_09_18_Ole-Christian Galbo/Training/COCO_Training.json'
     #image_dir = 'C:/Users/Cornelius/Documents/GitHub/Bscproject/Bsc_Thesis_Instance_segmentation/preprocessing/'
-    image_dir = 'C:/Users/Corne/Downloads/DreierHSI_Mar_03_2023_09_18_Ole-Christian Galbo/Training/images/'
+    image_dir = 'C:/Users/Cornelius/Downloads/DreierHSI_Mar_03_2023_09_18_Ole-Christian Galbo/Training/images/'
     dataset = load_coco(annotation_path)
     dict_coco = empty_dict()
     dict_coco['categories']=dataset['categories']
     dict_coco['info']=dataset['info']
     dict_coco['licenses']=dataset['licenses']
-    for c in range(30000):
-        background = np.zeros((128,128,3),dtype = np.uint8)
+    class_list = [ 1412692,     1412693,   1412694,   1412695,    1412696,     1412697,      1412698,    1412699,     1412700]
+    #           [Rye_midsummer, Wheat_H1, Wheat_H3,  Wheat_H4,   Wheat_H5, Wheat_Halland,  Wheat_Oland, Wheat_Spelt, Foreign]
+                
+    for c in range(1000):
+        background = np.zeros((480,480,3),dtype = np.uint8)
         background = cv.cvtColor(background, cv.COLOR_BGR2RGB)
-        max_tries=100
+        max_tries=500
+        class_check= [0]*8
         j=0
         while(j<max_tries):
             annotation_numb = np.random.randint(0,len(dataset['annotations']))
+            
             #annotation_numb = 3792
             #if annotation_numb == 4485:
             #    print("bye bye error")
@@ -104,7 +109,7 @@ if __name__=="__main__":
             height, width = cropped_im.shape[0], cropped_im.shape[1]
             cropped = crop_from_mask(dataset, annotation_numb, cropped_im)
             x, y, keep = find_x_y(background, cropped,annotation, height,width)
-            if keep:
+            if keep and (dataset['annotations'][annotation_numb]['category_id']!=1412700) and (class_check[class_list.index(dataset['annotations'][annotation_numb]['category_id'])] < 30):
                 background = overlay_on_larger_image(background,cropped,x,y)
                 dict_coco['annotations'].append({'id':coco_next_anno_id(dict_coco),
                                       'image_id':coco_next_img_id(dict_coco),
@@ -114,11 +119,12 @@ if __name__=="__main__":
                                       'area':dataset['annotations'][annotation_numb]['area'],
                                       'category_id':dataset['annotations'][annotation_numb]['category_id']
                                       })
+                class_check[class_list.index(dataset['annotations'][annotation_numb]['category_id'])] += 1
             else:
                 pass
             j+=1
         background= cv.cvtColor(background, cv.COLOR_BGR2RGB)
-        cv.imwrite(f"images/Training/Synthetic_{c}.jpg",background)
+        cv.imwrite(f"images/Synthetic_{c}.jpg",background)
         dict_coco['images'].append({'id':c+1,
                                     'file_name': f"Synthetic_{c}.jpg",
                                     'license':1,
