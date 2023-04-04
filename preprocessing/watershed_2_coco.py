@@ -46,8 +46,8 @@ def watershed_2_coco(contours):
         
     return temp
 
-def export_json(dict_coco):
-    with open('COCO_export.json', 'w') as fp:
+def export_json(dict_coco,name):
+    with open(name, 'w') as fp:
         json.dump(dict_coco, fp)
 
 
