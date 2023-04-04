@@ -13,7 +13,7 @@ Created on Tue Feb 14 11:10:49 2023
 
 @author: Cornelius
 """
-from Display_mask import load_coco, load_annotation, find_image
+from Display_mask import load_coco, load_annotation, find_image, draw_img
 from crop_from_mask import crop_from_mask, fill_mask,overlay_on_larger_image
 from watershed_2_coco import empty_dict, export_json
 import numpy as np
@@ -80,9 +80,9 @@ def coco_new_bbox(x,y,dataset,image_id,annotation_numb):
 
 if __name__=="__main__":
     #annotation_path = r'C:\Users\Cornelius\Documents\GitHub\Bscproject\Bsc_Thesis_Instance_segmentation\preprocessing\COCO_Test.json'
-    annotation_path = 'C:/Users/Cornelius/Downloads/DreierHSI_Mar_03_2023_09_18_Ole-Christian Galbo/Training/COCO_Training.json'
+    annotation_path = r'C:\Users\admin\Downloads\DreierHSI_Mar_07_2023_13_24_Ole-Christian Galbo\Training\COCO_Training.json'
     #image_dir = 'C:/Users/Cornelius/Documents/GitHub/Bscproject/Bsc_Thesis_Instance_segmentation/preprocessing/'
-    image_dir = 'C:/Users/Cornelius/Downloads/DreierHSI_Mar_03_2023_09_18_Ole-Christian Galbo/Training/images/'
+    image_dir = r'C:\Users\admin\Downloads\DreierHSI_Mar_07_2023_13_24_Ole-Christian Galbo\Training\images/'
     dataset = load_coco(annotation_path)
     dict_coco = empty_dict()
     dict_coco['categories']=dataset['categories']
@@ -91,8 +91,8 @@ if __name__=="__main__":
     class_list = [ 1412692,     1412693,   1412694,   1412695,    1412696,     1412697,      1412698,    1412699,     1412700]
     #           [Rye_midsummer, Wheat_H1, Wheat_H3,  Wheat_H4,   Wheat_H5, Wheat_Halland,  Wheat_Oland, Wheat_Spelt, Foreign]
                 
-    for c in range(1000):
-        background = np.zeros((480,480,3),dtype = np.uint8)
+    for c in range(10):
+        background = np.zeros((256,256,3),dtype = np.uint8)
         background = cv.cvtColor(background, cv.COLOR_BGR2RGB)
         max_tries=500
         class_check= [0]*8
@@ -109,7 +109,12 @@ if __name__=="__main__":
             height, width = cropped_im.shape[0], cropped_im.shape[1]
             cropped = crop_from_mask(dataset, annotation_numb, cropped_im)
             x, y, keep = find_x_y(background, cropped,annotation, height,width)
-            if keep and (dataset['annotations'][annotation_numb]['category_id']!=1412700) and (class_check[class_list.index(dataset['annotations'][annotation_numb]['category_id'])] < 30):
+            
+            #Specifying how many of Rye_midsummar is to be generated:
+            max_numb = 8
+            
+            
+            if keep and (dataset['annotations'][annotation_numb]['category_id']!=1412700) and (class_check[class_list.index(dataset['annotations'][annotation_numb]['category_id'])] < max_numb):
                 background = overlay_on_larger_image(background,cropped,x,y)
                 dict_coco['annotations'].append({'id':coco_next_anno_id(dict_coco),
                                       'image_id':coco_next_img_id(dict_coco),
@@ -131,6 +136,43 @@ if __name__=="__main__":
                                     'height':background.shape[0],
                                     'width':background.shape[1]})
     export_json(dict_coco)
+    
+    plot_mask = True
+    if plot_mask == True:
+        ### Extracting name of the particular grain-type and counting instances in image
+        for new_id in range(1, 11):
+            ground_truth = 0
+            name = []
+            for annotations in dict_coco["annotations"]:
+                if annotations["image_id"]==new_id:
+                    ground_truth += 1
+                    for categories in dict_coco["categories"]:
+                        if categories["id"] == annotations["category_id"]:
+                            #print(annotations["category_id"])
+                            name.append(categories["name"])
+            #name = set(name)
+            unique, counts = np.unique(name, return_counts=True)
+            print("")
+            print(f"The following grain-type being analysed is:  {dict(zip(unique, counts))}   with image_id:  {new_id}")
+            print("")
+            print(f"The ground-truth amount of kernels in the image is:  {ground_truth}")
+                
+        #c = 0 
+
+        for new_id in range(1, 11):
+            annote_ids = []
+            
+            #print (new_annotation['annotations'] )
+            for i in range(len(dict_coco['annotations'])):
+                #print(i)
+                if dict_coco['annotations'][i]['image_id']==new_id:
+                    #print(image_id)
+                    annote_ids.append(i)
+                else:
+                    continue
+            
+            image_dir2 = r"C:\Users\admin\Desktop\bachelor\Bsc_Thesis_Instance_segmentation\preprocessing\images/"
+            draw_img(dict_coco, new_id, annote_ids, image_dir2)
 # =============================================================================
 # ov = np.zeros((300, 300))
 # new_obj = np.zeros((300, 300))
@@ -146,4 +188,3 @@ if __name__=="__main__":
 # plt.imshow(ov)
 # plt.show()
 # =============================================================================
-
