@@ -5,3 +5,6 @@
 *.pyc
 *.npy
 *.txt
+*.json
+*.csv
+*.png
