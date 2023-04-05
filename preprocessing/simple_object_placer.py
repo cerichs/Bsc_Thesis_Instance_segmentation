@@ -91,10 +91,10 @@ if __name__=="__main__":
     class_list = [ 1412692,     1412693,   1412694,   1412695,    1412696,     1412697,      1412698,    1412699,     1412700]
     #           [Rye_midsummer, Wheat_H1, Wheat_H3,  Wheat_H4,   Wheat_H5, Wheat_Halland,  Wheat_Oland, Wheat_Spelt, Foreign]
                 
-    for c in range(10):
+    for c in range(1000):
         background = np.zeros((256,256,3),dtype = np.uint8)
         background = cv.cvtColor(background, cv.COLOR_BGR2RGB)
-        max_tries=500
+        max_tries=200
         class_check= [0]*8
         j=0
         while(j<max_tries):
