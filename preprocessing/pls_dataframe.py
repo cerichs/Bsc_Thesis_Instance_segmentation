@@ -43,7 +43,7 @@ def pixel_average(hyperspectral_image, mask):
 
     
     for label in unique_labels:
-        if label == 0:  # Assuming 0 is the background label
+        if (label == 0) or (label == 300):  # Assuming 0 is the background label
             continue # Do not take average which includes background
         
         else:
@@ -88,7 +88,7 @@ def checkicheck(dataset, pseudo_image_dir, hyperspectral_path):
         
         if pseudo_name in hyperspectral_imgs:
             
-            [hyper_path.append(os.path.join(hyper_folder, i)) for i in hyperspectral_imgs]
+            [hyper_path.append(os.path.join(hyper_folder, i)) for i in hyperspectral_imgs if pseudo_name in i]
             pseudo_rgbs.append(pseudo_rgb)
             img_name.append(image_name)
         else:
@@ -135,19 +135,21 @@ def create_dataframe(hyperspectral_img, pseudo_rgb, image_name):
         df.loc[len(df)] = temp
     
     # Saving dataframe for later use
-    df.to_csv("Pixel_avg_dataframe.csv")
+    df.to_csv("Pixel_avg_dataframe.csv",index=False)
 
         
     return df
 
 
-def PLS_classify(dataframe, pseudo_image_path, hyperspectral_img_path):
+def PLS_classify(dataframe, pseudo_image_path, hyperspectral_img_path,pseudo_name):
     
     y = dataframe['wl0']
     X = dataframe.values[:, 1:]
 
-
-    Y = [y[i] for i in range(len(y))]
+    if train:
+        Y = [y[i] for i in range(len(y))]
+    else:
+        Y = [eval(y[i]) for i in range(len(y))] # cause read_csv(), dont ask me why
     
     wl = np.arange(900, 1700, (1700-900)/102)
     
@@ -165,13 +167,14 @@ def PLS_classify(dataframe, pseudo_image_path, hyperspectral_img_path):
         plt.xlabel("Wavelengths (nm)")
         plt.ylabel("Absorbance")
         plt.savefig("absorbance", dpi=200)
+        plt.show()
         
 
     classifier = PLS(algorithm=2)
     Y = np.array(Y)
-    classifier.fit(X, Y, 40)        
+    classifier.fit(X, Y, 102)        
     
-    for pseudo_img, hyp_img in zip(pseudo_rgb, hyper_folder):
+    for pseudo_img, hyp_img, nam in zip(pseudo_rgb, hyper_folder,pseudo_name):
         #img_name = r"C:\Users\admin\Downloads\hyper\Training\Rye_Midsummer\Sparse_Series1_20_09_08_07_47_28.npy"
 
         # Load spectral image correctly
@@ -183,15 +186,16 @@ def PLS_classify(dataframe, pseudo_image_path, hyperspectral_img_path):
         unique_labels = np.unique(markers) # Getting unique labels
         
         classify_img = markers.copy()
-        
+        plt.figure(dpi=200)
         plt.imshow(im)
-        for mask_id in unique_labels[1:]:
+        for mask_id in np.add(unique_labels,300)[1:]: # offsetting labels to avoid error if mask_id == 255
             mask = markers.copy()
+            mask = np.add(mask,300)
             mask[mask != mask_id] = 0
             mask[mask == mask_id] = 255
             
             pixel_avg = pixel_average(spectral_img, mask)[0]
-            result = classifier.predict(pixel_avg, A=15)
+            result = classifier.predict(pixel_avg, A=17)
         
             #heyo = [np.argmax(result[i,j,:]) for i in range(len(result)) for j in range(len(result[i]))]
             #classification = np.reshape(heyo, im.shape[0:2])
@@ -217,8 +221,12 @@ def PLS_classify(dataframe, pseudo_image_path, hyperspectral_img_path):
             masking = overlay_on_larger_image(im,cropped)
             
             x, y = anno[0::2],anno[1::2] # comes in pair of [x,y,x,y,x,y], there split with even and uneven
-            plt.fill(x, y,alpha=.7, color=color[np.argmax(result)])
-            
+            plt.fill(x, y,alpha=.3, color=color[np.argmax(result)],label = class_list[np.argmax(result)])
+        handles, labels = plt.gca().get_legend_handles_labels()
+        by_label = dict(zip(labels, handles))
+        plt.legend(by_label.values(), by_label.keys(),loc="center left", bbox_to_anchor =(1,0.5))
+        plt.axis("off")
+        plt.title(nam[:-30])
         plt.show()
             
 
@@ -230,26 +238,29 @@ if __name__ == "__main__":
     
     # Training_data
     #annotation_path = r'C:\Users\Cornelius\Documents\GitHub\Bscproject\Bsc_Thesis_Instance_segmentation\preprocessing\COCO_Test.json'
-    train_annotation_path = r"C:\Users\admin\Downloads\DreierHSI_Mar_07_2023_13_24_Ole-Christian Galbo\Training\COCO_Training.json"#image_dir = 'C:/Users/Cornelius/Documents/GitHub/Bscproject/Bsc_Thesis_Instance_segmentation/preprocessing/'
-    train_image_dir = r"C:\Users\admin\Downloads\DreierHSI_Mar_07_2023_13_24_Ole-Christian Galbo\Training\images/"
+    train_annotation_path = "C:/Users/Cornelius/Downloads/DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo/Training/COCO_Training.json"#image_dir = 'C:/Users/Cornelius/Documents/GitHub/Bscproject/Bsc_Thesis_Instance_segmentation/preprocessing/'
+    train_image_dir = "C:/Users/Cornelius/Downloads/DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo/Training/images/"
     # Loading training dataset
     dataset = load_coco(train_annotation_path)
     
     # Test_data
-    test_annotation_path = r"C:\Users\admin\Downloads\DreierHSI_Mar_07_2023_13_24_Ole-Christian Galbo\Test\COCO_Test.json"#image_dir = 'C:/Users/Cornelius/Documents/GitHub/Bscproject/Bsc_Thesis_Instance_segmentation/preprocessing/'
-    test_image_dir = r"C:\Users\admin\Downloads\DreierHSI_Mar_07_2023_13_24_Ole-Christian Galbo\Test\images/"
+    test_annotation_path = "C:/Users/Cornelius/Downloads/DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo/Training/COCO_Training.json"#image_dir = 'C:/Users/Cornelius/Documents/GitHub/Bscproject/Bsc_Thesis_Instance_segmentation/preprocessing/'
+    test_image_dir = "C:/Users/Cornelius/Downloads/DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo/Test/images/"
     
     
     #Loading path to hyperspectral image
-    hyperspectral_path_train = r"C:\Users\admin\Downloads\hyper\Training"
-    
+    hyperspectral_path_train = r"C:\Users\Cornelius\Downloads\e4Wr5LFI4L\Training"
+    hyperspectral_path_class = r"C:\Users\Cornelius\Downloads\e4Wr5LFI4L\Training\Rye_Midsummer"
+
     hyper_folder, pseudo_rgb, pseudo_name = checkicheck(dataset, train_image_dir, hyperspectral_path_train)
     
-
-    df_train = create_dataframe(hyper_folder, pseudo_rgb, pseudo_name)
-    
-    
-    PLS_classify(df_train, pseudo_rgb, hyper_folder)
+    train = False
+    if train:
+        df_train = create_dataframe(hyper_folder, pseudo_rgb, pseudo_name)
+    else:
+        df_train = pd.read_csv("C:/Users/Cornelius/Documents/GitHub/Bscproject/Bsc_Thesis_Instance_segmentation/preprocessing/Pixel_avg_dataframe.csv")
+        #df_train = df_train.iloc[:,1:]
+    PLS_classify(df_train, pseudo_rgb, hyper_folder,pseudo_name)
     
 
     
