@@ -201,32 +201,26 @@ def PLS_classify(dataframe, pseudo_image_path, hyperspectral_img_path,pseudo_nam
             
             pixel_avg = pixel_average(spectral_img, mask)[0]
             result = classifier.predict(pixel_avg, A=17)
-        
-            #heyo = [np.argmax(result[i,j,:]) for i in range(len(result)) for j in range(len(result[i]))]
-            #classification = np.reshape(heyo, im.shape[0:2])
-            
-            
-            
+
             cropped_im = cv.bitwise_and(im, im, mask=np.uint8(mask[mask==mask_id]))
             
-            
-            
             contours, _ = cv.findContours(np.uint8(mask),cv.RETR_EXTERNAL,cv.CHAIN_APPROX_NONE) # CHAIN_APPROX_NONE to avoid RLE
-            
-            anno = watershed_2_coco(contours)
-                            
-     
-            start_x = min(anno[0::2])
-            start_y = min(anno[1::2])
-            end_x = max(anno[0::2])-start_x
-            end_y = max(anno[1::2])-start_y
-
-            cropped = cropped_im[start_y:start_y+end_y,start_x:start_x+end_x]
-            
-            masking = overlay_on_larger_image(im,cropped)
-            
-            x, y = anno[0::2],anno[1::2] # comes in pair of [x,y,x,y,x,y], there split with even and uneven
-            plt.fill(x, y,alpha=.3, color=color[np.argmax(result)],label = class_list[np.argmax(result)])
+            try:
+                anno = watershed_2_coco(contours)
+                
+                start_x = min(anno[0::2])
+                start_y = min(anno[1::2])
+                end_x = max(anno[0::2])-start_x
+                end_y = max(anno[1::2])-start_y
+    
+                cropped = cropped_im[start_y:start_y+end_y,start_x:start_x+end_x]
+                
+                masking = overlay_on_larger_image(im,cropped)
+                
+                x, y = anno[0::2],anno[1::2] # comes in pair of [x,y,x,y,x,y], there split with even and uneven
+                plt.fill(x, y,alpha=.3, color=color[np.argmax(result)],label = class_list[np.argmax(result)])
+            except:
+                print("Watershed is trash") # it sometimes predict 1 pixel instead of polygon
         handles, labels = plt.gca().get_legend_handles_labels()
         by_label = dict(zip(labels, handles))
         plt.legend(by_label.values(), by_label.keys(),loc="center left", bbox_to_anchor =(1,0.5))
@@ -247,7 +241,7 @@ if __name__ == "__main__":
     train_image_dir = "C:/Users/Cornelius/Downloads/DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo/Training/images/"
     
     # Test_data
-    test_annotation_path = "C:/Users/Cornelius/Downloads/DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo/Training/COCO_Training.json"#image_dir = 'C:/Users/Cornelius/Documents/GitHub/Bscproject/Bsc_Thesis_Instance_segmentation/preprocessing/'
+    test_annotation_path = "C:/Users/Cornelius/Downloads/DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo/Test/COCO_Test.json"#image_dir = 'C:/Users/Cornelius/Documents/GitHub/Bscproject/Bsc_Thesis_Instance_segmentation/preprocessing/'
     test_image_dir = "C:/Users/Cornelius/Downloads/DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo/Test/images/"
     
     # Loading training/test dataset
