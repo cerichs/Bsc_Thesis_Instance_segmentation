@@ -30,7 +30,7 @@ def remove_by_class_id(dataset, class_id, PATH):
             temp_img = img[y:y+int(bbox[3]), x:x+int(bbox[2])] # Selecting a window of the image to edit
             temp_img[cropped>0] = 0 # All the places where the object is, is set to 0. Where the mask is 0, does remains unchanged from the larger_image
             img[y:y+cropped.shape[0], x:x+cropped.shape[1]] = temp_img # The window is put back into larger_image
-            cv.imwrite("C:/Users/Cornelius/Documents/GitHub/Bscproject/Bsc_Thesis_Instance_segmentation/preprocessing/images/corrected/" + image_name,img)
+            cv.imwrite(image_dir + image_name,img)
             print(image_name)
             removal.append(annotations["id"]-1)
     offset = 0
@@ -41,11 +41,11 @@ def remove_by_class_id(dataset, class_id, PATH):
     return dataset
     
 if __name__=="__main__":
-    annotation_path = 'C:/Users/Cornelius/Downloads/DreierHSI_Mar_03_2023_09_18_Ole-Christian Galbo/Training/COCO_Training.json'
+    annotation_path = 'C:/Users/Cornelius/Downloads/DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo/Test/COCO_Test.json'
     #image_dir = 'C:/Users/Cornelius/Documents/GitHub/Bscproject/Bsc_Thesis_Instance_segmentation/preprocessing/'
-    image_dir = 'C:/Users/Cornelius/Downloads/DreierHSI_Mar_03_2023_09_18_Ole-Christian Galbo/Training/images/'
+    image_dir = 'C:/Users/Cornelius/Downloads/DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo/Test/images/'
     dataset = load_coco(annotation_path)
-    class_id = 1412700
+    class_id = 1412700 # Foreign class id
     temp = remove_by_class_id(dataset, class_id,image_dir)
-    export_json(temp,"COCO_corrected.json")
+    export_json(temp,"COCO_corrected_test.json")
     

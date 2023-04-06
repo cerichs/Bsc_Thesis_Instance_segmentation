@@ -80,9 +80,9 @@ def coco_new_bbox(x,y,dataset,image_id,annotation_numb):
 
 if __name__=="__main__":
     #annotation_path = r'C:\Users\Cornelius\Documents\GitHub\Bscproject\Bsc_Thesis_Instance_segmentation\preprocessing\COCO_Test.json'
-    annotation_path = r'C:\Users\admin\Downloads\DreierHSI_Mar_07_2023_13_24_Ole-Christian Galbo\Training\COCO_Training.json'
+    annotation_path = r'C:\Users\admin\Downloads\DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo\Training\COCO_Training.json'
     #image_dir = 'C:/Users/Cornelius/Documents/GitHub/Bscproject/Bsc_Thesis_Instance_segmentation/preprocessing/'
-    image_dir = r'C:\Users\admin\Downloads\DreierHSI_Mar_07_2023_13_24_Ole-Christian Galbo\Training\images/'
+    image_dir = r'C:\Users\admin\Downloads\DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo\Training\images/'
     dataset = load_coco(annotation_path)
     dict_coco = empty_dict()
     dict_coco['categories']=dataset['categories']
