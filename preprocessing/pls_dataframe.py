@@ -13,6 +13,7 @@ import pandas as pd
 import cv2 as cv
 import matplotlib.pyplot as plt
 import seaborn as sns
+from itertools import compress
 
 
 def spectral_test(img_path):
@@ -54,24 +55,22 @@ def pixel_average(hyperspectral_image, mask):
 
     return pixel_averages
 
-          
-def create_dataframe(dataset, pseudo_image_dir, hyperspectral_path):
-    
-    # Creating dataframe with 103 rows - 1 label row and 102 for the channels
-    df = pd.DataFrame( columns = [None]*103)
-    df.columns = [f"wl{i}" for i in range(0, 103)]
 
+def checkicheck(dataset, pseudo_image_dir, hyperspectral_path):
+    
+    
+    hyper_path = []
+    pseudo_rgbs = []
+    img_name = []
+    
+    #hypersp_imgs = [] 
+    
     # Looping over all images with their corresponding image_id
     for image_id in range(len(dataset["images"])):
         #Loading path to pseudo_rgb image
         image_name = dataset["images"][image_id]["file_name"]
         pseudo_rgb = os.path.join(pseudo_image_dir, image_name)
         
-        
-        # Retrieving shape of pseudo_rgb - shall be used in creation of background
-        pseudo_shape = cv.imread(pseudo_rgb).shape
-        background = np.zeros(pseudo_shape,dtype = np.uint8)
-        background = cv.cvtColor(background, cv.COLOR_BGR2RGB)
         
         # As the coco-dataset has initial-index 0, we start by this
         image_id += 1
@@ -88,53 +87,74 @@ def create_dataframe(dataset, pseudo_image_dir, hyperspectral_path):
         pseudo_name = pseudo_rgb.split("\\")[-1].split("/")[-1].split(".")[0][9+len(hyper_folder.split("\\")[-1])+1:] + ".npy"
         
         if pseudo_name in hyperspectral_imgs:
-            # Gaining the full path to the hyperspectral image as stake
-            hyperspectral_img = os.path.join(hyper_folder, pseudo_name)
             
-            ##Now we have the full path to hyperspectral image
-            # Load spectral image correctly
-            spectral_img = spectral_test(hyperspectral_img)
-            
-            # Gain binary mask from pseudo_rgb through Otsu's method
-            _, mask_h = preprocess_image(pseudo_rgb)
-            
-            # Pixel_average of spectral_img based on the binary mask
-            pixel_avg = pixel_average(spectral_img, mask_h)
-            
-            
-            ##At last we need one-hot-encoded labels
-            # One-Hot-Encoded Labels
-            class_list = ["Rye_Midsummer", "Wheat_H1", "Wheat_H3",  "Wheat_H4",   "Wheat_H5", "Wheat_Halland",  "Wheat_Oland", "Wheat_Spelt"]
-            
-            labels = [int(names in image_name) for names in class_list]
-            
-            # Creating list of len 103 with specific one-hot label and respective 102 pixel-averages
-            temp = [labels] + pixel_avg[0].tolist()
-            
-            # Appending this to the dataframe
-            df.loc[len(df)] = temp
-            
-            # Saving dataframe for later use
-            df.to_csv(f"Pixel_avg_dataframe.csv")
-
+            [hyper_path.append(os.path.join(hyper_folder, i)) for i in hyperspectral_imgs]
+            pseudo_rgbs.append(pseudo_rgb)
+            img_name.append(image_name)
         else:
             continue
+    return hyper_path, pseudo_rgbs, img_name
+    
+
+def create_dataframe(hyperspectral_img, pseudo_rgb, image_name):
+    
+    # Creating dataframe with 103 rows - 1 label row and 102 for the channels
+    df = pd.DataFrame( columns = [None]*103)
+    df.columns = [f"wl{i}" for i in range(0, 103)]
+    
+    for i in range(len(image_name)):
         
-    return df, class_list
+        # Retrieving shape of pseudo_rgb - shall be used in creation of background
+        pseudo_shape = cv.imread(pseudo_rgb[i]).shape
+        background = np.zeros(pseudo_shape,dtype = np.uint8)
+        background = cv.cvtColor(background, cv.COLOR_BGR2RGB)
+        
+        
+        
+        ##Now we have the full path to hyperspectral image
+        # Load spectral image correctly
+        spectral_img = spectral_test(hyperspectral_img[i])
+        
+        # Gain binary mask from pseudo_rgb through Otsu's method
+        _, mask_h = preprocess_image(pseudo_rgb[i])
+        
+        # Pixel_average of spectral_img based on the binary mask
+        pixel_avg = pixel_average(spectral_img, mask_h)
+        
+        
+        ##At last we need one-hot-encoded labels
+        # One-Hot-Encoded Labels
+        class_list = ["Rye_Midsummer", "Wheat_H1", "Wheat_H3",  "Wheat_H4",   "Wheat_H5", "Wheat_Halland",  "Wheat_Oland", "Wheat_Spelt"]
+        
+        labels = [int(names in image_name[i]) for names in class_list]
+        
+        # Creating list of len 103 with specific one-hot label and respective 102 pixel-averages
+        temp = [labels] + pixel_avg[0].tolist()
+        
+        # Appending this to the dataframe
+        df.loc[len(df)] = temp
+    
+    # Saving dataframe for later use
+    df.to_csv("Pixel_avg_dataframe.csv")
+
+        
+    return df
 
 
-def PLS_classify(dataframe, class_list, pseudo_image_dir, hyperspectral_path):
+def PLS_classify(dataframe, pseudo_image_path, hyperspectral_img_path):
     
     y = dataframe['wl0']
     X = dataframe.values[:, 1:]
 
 
-    Y = [eval(y[i]) for i in range(len(y))]
+    Y = [y[i] for i in range(len(y))]
     
     wl = np.arange(900, 1700, (1700-900)/102)
     
-    from itertools import compress
-    color = ["red", "blue", "green", "yellow", "black", "orange", "grey", "pink"]
+
+    class_list = ["Rye_Midsummer", "Wheat_H1", "Wheat_H3",  "Wheat_H4",   "Wheat_H5", "Wheat_Halland",  "Wheat_Oland", "Wheat_Spelt"]
+
+    color = ["red", "darkblue", "green", "yellow", "white", "orange", "cyan", "pink"]
     with plt.style.context('ggplot'):
         for i in range(len(Y)):
             plt.plot(wl, X[i].T, color=list(compress(color, Y[i]))[0], label=list(compress(class_list, Y[i]))[0])
@@ -151,11 +171,7 @@ def PLS_classify(dataframe, class_list, pseudo_image_dir, hyperspectral_path):
     Y = np.array(Y)
     classifier.fit(X, Y, 40)        
     
-    pseudo_img = [i for i in os.listdir(pseudo_image_dir)]
-    hyp_img = [i for i in os.listdir(hyperspectral_path)]
-    
-    
-    for pseudo_img, hyp_img in zip(os.listdir(pseudo_image_dir), [i for i in os.listdir(hyperspectral_path) if (("Multiplied" not in i) and ("subtracted" not in i))]):
+    for pseudo_img, hyp_img in zip(pseudo_rgb, hyper_folder):
         #img_name = r"C:\Users\admin\Downloads\hyper\Training\Rye_Midsummer\Sparse_Series1_20_09_08_07_47_28.npy"
 
         # Load spectral image correctly
@@ -169,27 +185,28 @@ def PLS_classify(dataframe, class_list, pseudo_image_dir, hyperspectral_path):
         classify_img = markers.copy()
         
         plt.imshow(im)
-        for mask_id in unique_labels:
+        for mask_id in unique_labels[1:]:
             mask = markers.copy()
             mask[mask != mask_id] = 0
             mask[mask == mask_id] = 255
             
-            pixel_avg = pixel_average(spectral_img, mask_id)
-            
+            pixel_avg = pixel_average(spectral_img, mask)[0]
             result = classifier.predict(pixel_avg, A=15)
         
-            heyo = [np.argmax(result[i,j,:]) for i in range(len(result)) for j in range(len(result[i]))]
-            classification = np.reshape(heyo, im.shape)
+            #heyo = [np.argmax(result[i,j,:]) for i in range(len(result)) for j in range(len(result[i]))]
+            #classification = np.reshape(heyo, im.shape[0:2])
+            
+            
             
             cropped_im = cv.bitwise_and(im, im, mask=np.uint8(mask[mask==mask_id]))
             
             
             
-            contours, _ = cv.findContours(cropped_im,cv.RETR_EXTERNAL,cv.CHAIN_APPROX_NONE) # CHAIN_APPROX_NONE to avoid RLE
+            contours, _ = cv.findContours(np.uint8(mask),cv.RETR_EXTERNAL,cv.CHAIN_APPROX_NONE) # CHAIN_APPROX_NONE to avoid RLE
             
             anno = watershed_2_coco(contours)
                             
-    
+     
             start_x = min(anno[0::2])
             start_y = min(anno[1::2])
             end_x = max(anno[0::2])-start_x
@@ -199,8 +216,8 @@ def PLS_classify(dataframe, class_list, pseudo_image_dir, hyperspectral_path):
             
             masking = overlay_on_larger_image(im,cropped)
             
-            x, y = anno[0][0::2],anno[0][1::2] # comes in pair of [x,y,x,y,x,y], there split with even and uneven
-            plt.fill(x, y,alpha=.7)
+            x, y = anno[0::2],anno[1::2] # comes in pair of [x,y,x,y,x,y], there split with even and uneven
+            plt.fill(x, y,alpha=.7, color=color[np.argmax(result)])
             
         plt.show()
             
@@ -226,10 +243,14 @@ if __name__ == "__main__":
     #Loading path to hyperspectral image
     hyperspectral_path_train = r"C:\Users\admin\Downloads\hyper\Training"
     
-    df_train, class_list  = create_dataframe(dataset, train_image_dir, hyperspectral_path_train)
+    hyper_folder, pseudo_rgb, pseudo_name = checkicheck(dataset, train_image_dir, hyperspectral_path_train)
+    
+
+    df_train = create_dataframe(hyper_folder, pseudo_rgb, pseudo_name)
     
     
-    PLS_classify(df_train, class_list, train_image_dir, hyperspectral_path_train)
+    PLS_classify(df_train, pseudo_rgb, hyper_folder)
     
+
     
     
