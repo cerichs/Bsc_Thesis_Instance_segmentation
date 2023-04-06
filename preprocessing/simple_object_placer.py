@@ -80,9 +80,9 @@ def coco_new_bbox(x,y,dataset,image_id,annotation_numb):
 
 if __name__=="__main__":
     #annotation_path = r'C:\Users\Cornelius\Documents\GitHub\Bscproject\Bsc_Thesis_Instance_segmentation\preprocessing\COCO_Test.json'
-    annotation_path = r'C:\Users\admin\Downloads\DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo\Training\COCO_Training.json'
+    annotation_path = 'C:/Users/Cornelius/Downloads/DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo/Training/COCO_Training.json'
     #image_dir = 'C:/Users/Cornelius/Documents/GitHub/Bscproject/Bsc_Thesis_Instance_segmentation/preprocessing/'
-    image_dir = r'C:\Users\admin\Downloads\DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo\Training\images/'
+    image_dir = 'C:/Users/Cornelius/Downloads/DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo/Training/images/'
     dataset = load_coco(annotation_path)
     dict_coco = empty_dict()
     dict_coco['categories']=dataset['categories']
@@ -94,15 +94,12 @@ if __name__=="__main__":
     for c in range(1000):
         background = np.zeros((256,256,3),dtype = np.uint8)
         background = cv.cvtColor(background, cv.COLOR_BGR2RGB)
-        max_tries=200
+        max_tries=200 # amount of kernel to randomly sample and try to place
         class_check= [0]*8
         j=0
         while(j<max_tries):
             annotation_numb = np.random.randint(0,len(dataset['annotations']))
             
-            #annotation_numb = 3792
-            #if annotation_numb == 4485:
-            #    print("bye bye error")
             image_name, image_id = find_image(dataset, annotation_numb)
             bbox, annotation = load_annotation(dataset, annotation_numb, image_id)
             cropped_im = fill_mask(dataset,image_id, annotation, image_name,image_dir)
@@ -110,10 +107,8 @@ if __name__=="__main__":
             cropped = crop_from_mask(dataset, annotation_numb, cropped_im)
             x, y, keep = find_x_y(background, cropped,annotation, height,width)
             
-            #Specifying how many of Rye_midsummar is to be generated:
+            #Specifying the max of each kernel type to be generated:
             max_numb = 8
-            
-            
             if keep and (dataset['annotations'][annotation_numb]['category_id']!=1412700) and (class_check[class_list.index(dataset['annotations'][annotation_numb]['category_id'])] < max_numb):
                 background = overlay_on_larger_image(background,cropped,x,y)
                 dict_coco['annotations'].append({'id':coco_next_anno_id(dict_coco),
@@ -135,10 +130,10 @@ if __name__=="__main__":
                                     'license':1,
                                     'height':background.shape[0],
                                     'width':background.shape[1]})
-    export_json(dict_coco)
+    export_json(dict_coco,"COCO_balanced_1k.json")
     
-    plot_mask = True
-    if plot_mask == True:
+    plot_mask = False
+    if plot_mask:
         ### Extracting name of the particular grain-type and counting instances in image
         for new_id in range(1, 11):
             ground_truth = 0
