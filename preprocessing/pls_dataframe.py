@@ -56,7 +56,7 @@ def pixel_average(hyperspectral_image, mask):
     return pixel_averages
 
 
-def checkicheck(dataset, pseudo_image_dir, hyperspectral_path):
+def checkicheck(dataset, pseudo_image_dir, hyperspectral_path, training=True):
     
     
     hyper_path = []
@@ -83,9 +83,14 @@ def checkicheck(dataset, pseudo_image_dir, hyperspectral_path):
         # Making sure we are not extracting the multiplied- and subtracted-files
         hyperspectral_imgs = [i for i in hyperspectral_imgs if (("Multiplied" not in i) and ("subtracted" not in i))]
         
-        # Only retrieving the specific file-name of the pseudo-rgb - used to compare with the hyperspectral image-name
-        pseudo_name = pseudo_rgb.split("\\")[-1].split("/")[-1].split(".")[0][9+len(hyper_folder.split("\\")[-1])+1:] + ".npy"
+        if training:
+            # Only retrieving the specific file-name of the pseudo-rgb - used to compare with the hyperspectral image-name
+            pseudo_name = pseudo_rgb.split("\\")[-1].split("/")[-1].split(".")[0][9+len(hyper_folder.split("\\")[-1])+1:] + ".npy"
         
+        else:
+            # Only retrieving the specific file-name of the pseudo-rgb - used to compare with the hyperspectral image-name
+            pseudo_name = pseudo_rgb.split("\\")[-1].split("/")[-1].split(".")[0][5+len(hyper_folder.split("\\")[-1])+1:] + ".npy"
+            
         if pseudo_name in hyperspectral_imgs:
             
             [hyper_path.append(os.path.join(hyper_folder, i)) for i in hyperspectral_imgs if pseudo_name in i]
@@ -240,24 +245,28 @@ if __name__ == "__main__":
     #annotation_path = r'C:\Users\Cornelius\Documents\GitHub\Bscproject\Bsc_Thesis_Instance_segmentation\preprocessing\COCO_Test.json'
     train_annotation_path = "C:/Users/Cornelius/Downloads/DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo/Training/COCO_Training.json"#image_dir = 'C:/Users/Cornelius/Documents/GitHub/Bscproject/Bsc_Thesis_Instance_segmentation/preprocessing/'
     train_image_dir = "C:/Users/Cornelius/Downloads/DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo/Training/images/"
-    # Loading training dataset
-    dataset = load_coco(train_annotation_path)
     
     # Test_data
     test_annotation_path = "C:/Users/Cornelius/Downloads/DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo/Training/COCO_Training.json"#image_dir = 'C:/Users/Cornelius/Documents/GitHub/Bscproject/Bsc_Thesis_Instance_segmentation/preprocessing/'
     test_image_dir = "C:/Users/Cornelius/Downloads/DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo/Test/images/"
     
+    # Loading training/test dataset
+    dataset_train = load_coco(train_annotation_path)
+    dataset_test = load_coco(test_annotation_path)
+    
     
     #Loading path to hyperspectral image
     hyperspectral_path_train = r"C:\Users\Cornelius\Downloads\e4Wr5LFI4L\Training"
-    hyperspectral_path_class = r"C:\Users\Cornelius\Downloads\e4Wr5LFI4L\Training\Rye_Midsummer"
+    hyperspectral_path_test = r"C:\Users\Cornelius\Downloads\e4Wr5LFI4L\Test"
 
-    hyper_folder, pseudo_rgb, pseudo_name = checkicheck(dataset, train_image_dir, hyperspectral_path_train)
+    
     
     train = False
     if train:
+        hyper_folder, pseudo_rgb, pseudo_name = checkicheck(dataset_train, train_image_dir, hyperspectral_path_train)
         df_train = create_dataframe(hyper_folder, pseudo_rgb, pseudo_name)
     else:
+        hyper_folder, pseudo_rgb, pseudo_name = checkicheck(dataset_test, test_image_dir, hyperspectral_path_test, training=False)
         df_train = pd.read_csv("C:/Users/Cornelius/Documents/GitHub/Bscproject/Bsc_Thesis_Instance_segmentation/preprocessing/Pixel_avg_dataframe.csv")
         #df_train = df_train.iloc[:,1:]
     PLS_classify(df_train, pseudo_rgb, hyper_folder,pseudo_name)
