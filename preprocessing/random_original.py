@@ -140,8 +140,8 @@ def extract_subwindow(original_img, new_annotation, new_id, window_size, img_id,
 if __name__ == "__main__":
 
     #annotation_path = r'C:\Users\Cornelius\Documents\GitHub\Bscproject\Bsc_Thesis_Instance_segmentation\preprocessing\COCO_Test.json'
-    annotation_path = 'C:/Users/Cornelius/Downloads/DreierHSI_Mar_03_2023_09_18_Ole-Christian Galbo/Training/COCO_Training.json'
-    image_dir = 'C:/Users/Cornelius/Downloads/DreierHSI_Mar_03_2023_09_18_Ole-Christian Galbo/Training/images/'
+    annotation_path = 'C:/Users/Cornelius/Downloads/DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo/Test/COCO_Test.json'
+    image_dir = 'C:/Users/Cornelius/Downloads/DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo/Test/images/'
     
     
     new_annotation = empty_dict()
@@ -154,7 +154,7 @@ if __name__ == "__main__":
     class_check_Dense = [0]*8 
     class_check_sparse = [0]*8 
     c = 0
-    n = 1000
+    n = 300
     while (c < n):
         
         image_id = np.random.randint(0, len(dataset["images"]))   ### choose random image
@@ -214,6 +214,6 @@ if __name__ == "__main__":
         #print(f"The ground-truth amount of kernels in the image is:  {ground_truth}")
         
         
-    export_json(new_annotation,"COCO_windowed_2k.json")
+    export_json(new_annotation,"COCO_balanced__windowed_1k_test.json")
     
    

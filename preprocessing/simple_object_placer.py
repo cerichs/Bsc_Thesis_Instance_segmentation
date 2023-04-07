@@ -80,9 +80,9 @@ def coco_new_bbox(x,y,dataset,image_id,annotation_numb):
 
 if __name__=="__main__":
     #annotation_path = r'C:\Users\Cornelius\Documents\GitHub\Bscproject\Bsc_Thesis_Instance_segmentation\preprocessing\COCO_Test.json'
-    annotation_path = 'C:/Users/Cornelius/Downloads/DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo/Training/COCO_Training.json'
+    annotation_path = 'C:/Users/Cornelius/Downloads/DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo/Test/COCO_Test.json'
     #image_dir = 'C:/Users/Cornelius/Documents/GitHub/Bscproject/Bsc_Thesis_Instance_segmentation/preprocessing/'
-    image_dir = 'C:/Users/Cornelius/Downloads/DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo/Training/images/'
+    image_dir = 'C:/Users/Cornelius/Downloads/DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo/Test/images/'
     dataset = load_coco(annotation_path)
     dict_coco = empty_dict()
     dict_coco['categories']=dataset['categories']
@@ -91,7 +91,7 @@ if __name__=="__main__":
     class_list = [ 1412692,     1412693,   1412694,   1412695,    1412696,     1412697,      1412698,    1412699,     1412700]
     #           [Rye_midsummer, Wheat_H1, Wheat_H3,  Wheat_H4,   Wheat_H5, Wheat_Halland,  Wheat_Oland, Wheat_Spelt, Foreign]
                 
-    for c in range(1000):
+    for c in range(200):
         background = np.zeros((256,256,3),dtype = np.uint8)
         background = cv.cvtColor(background, cv.COLOR_BGR2RGB)
         max_tries=200 # amount of kernel to randomly sample and try to place
@@ -123,6 +123,7 @@ if __name__=="__main__":
             else:
                 pass
             j+=1
+        print(class_check)
         background= cv.cvtColor(background, cv.COLOR_BGR2RGB)
         cv.imwrite(f"images/Synthetic_{c}.jpg",background)
         dict_coco['images'].append({'id':c+1,
@@ -130,7 +131,7 @@ if __name__=="__main__":
                                     'license':1,
                                     'height':background.shape[0],
                                     'width':background.shape[1]})
-    export_json(dict_coco,"COCO_balanced_1k.json")
+    export_json(dict_coco,"COCO_balanced_1k_val.json")
     
     plot_mask = False
     if plot_mask:
