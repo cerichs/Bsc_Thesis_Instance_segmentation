@@ -39,6 +39,7 @@ def add_legend_to_predict(img):
     #class_list = [ 1412692,     1412693,   1412694,   1412695,    1412696,     1412697,      1412698,    1412699,     1412700]
     class_list = ["Rye_Midsummer", "Wheat_H1", "Wheat_H3",  "Wheat_H4",   "Wheat_H5", "Wheat_Halland",  "Wheat_Oland", "Wheat_Spelt"]
     img = cv.imread(img)
+    img = cv.cvtColor(img,cv.COLOR_BGR2RGB)
     plt.figure(dpi=200)
     plt.imshow(img)
 
