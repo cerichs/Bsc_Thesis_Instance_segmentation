@@ -8,11 +8,13 @@ import numpy as np
 from sklearn.metrics import mean_squared_error, r2_score
 from watershed_v2 import preprocess_image, watershedd
 from crop_from_mask import overlay_on_larger_image, fill_mask, crop_from_mask
-from watershed_2_coco import watershed_2_coco
+from watershed_2_coco import watershed_2_coco, empty_dict, export_json
+from simple_object_placer import coco_next_anno_id,coco_next_img_id
 import pandas as pd
 import cv2 as cv
 import matplotlib.pyplot as plt
 import seaborn as sns
+from skimage.draw import polygon
 from itertools import compress
 
 
@@ -145,8 +147,41 @@ def create_dataframe(hyperspectral_img, pseudo_rgb, image_name):
         
     return df
 
+def add_2_coco(dict_coco,dataset,annotations,pseudo_img,class_id):
+    if "Test" in pseudo_img:
+        for image in dataset["images"]:
+            if image["file_name"] in pseudo_img:
+                ids = image["id"]
+                dimensions = (image["height"],image["width"])
+        class_list = [ 1412692,     1412693,   1412694,   1412695,    1412696,     1412697,      1412698,    1412699,     1412700]
+        start_x = min(annotations[0::2])
+        start_y = min(annotations[1::2])
+        width = max(annotations[0::2])-start_x
+        height = max(annotations[1::2])-start_y
+        mini_img = np.zeros(dimensions,dtype=bool)
+        x, y = (annotations[0::2]),(annotations[1::2])
+        for x_x,y_y in zip(x,y):
+            x_x, y_y = int(x_x), int(y_y)
+            mini_img[y_y,x_x]=True
+        img=mini_img.astype(int)
 
-def PLS_classify(dataframe, pseudo_image_path, hyperspectral_img_path,pseudo_name):
+        row, col = polygon(y, x, img.shape)
+        img[row,col] = 1
+        
+        dict_coco['annotations'].append({'id': coco_next_anno_id(dict_coco),
+                                  'image_id': ids,
+                                  'segmentation': [annotations],
+                                  'iscrowd': 0,
+                                  'bbox': [start_x, start_y, width, height],
+                                  'area':int(np.sum(img)),
+                                  'category_id':class_list[class_id]
+                                  })
+        return dict_coco
+    else:
+        return
+
+
+def PLS_classify(dataframe, pseudo_image_path, hyperspectral_img_path,pseudo_name,dataset):
     
     y = dataframe['wl0']
     X = dataframe.values[:, 1:]
@@ -178,7 +213,12 @@ def PLS_classify(dataframe, pseudo_image_path, hyperspectral_img_path,pseudo_nam
     classifier = PLS(algorithm=2)
     Y = np.array(Y)
     classifier.fit(X, Y, 102)        
-    
+    dict_coco = {'annotations':[],
+                 'categories':[],
+                 'images':[],
+                 'info':None,
+                 'licenses':[]}
+    dict_coco["categories"] = dataset["categories"]
     for pseudo_img, hyp_img, nam in zip(pseudo_rgb, hyper_folder,pseudo_name):
         #img_name = r"C:\Users\admin\Downloads\hyper\Training\Rye_Midsummer\Sparse_Series1_20_09_08_07_47_28.npy"
 
@@ -219,16 +259,25 @@ def PLS_classify(dataframe, pseudo_image_path, hyperspectral_img_path,pseudo_nam
                 
                 x, y = anno[0::2],anno[1::2] # comes in pair of [x,y,x,y,x,y], there split with even and uneven
                 plt.fill(x, y,alpha=.3, color=color[np.argmax(result)],label = class_list[np.argmax(result)])
+                
+                dict_coco = add_2_coco(dict_coco,dataset,anno,pseudo_img,np.argmax(result))
+
             except:
-                print("Watershed is trash") # it sometimes predict 1 pixel instead of polygon
+                print("Warning: Skipping object, Watershed gave 1 pixel object") # it sometimes predict 1 pixel instead of polygon
+        dict_coco['images'].append({'id':coco_next_img_id(dict_coco),
+                            'file_name': f"{nam}.jpg",
+                            'license':1,
+                            'height':im.shape[0],
+                            'width':im.shape[1]})
+        
         handles, labels = plt.gca().get_legend_handles_labels()
         by_label = dict(zip(labels, handles))
         plt.legend(by_label.values(), by_label.keys(),loc="center left", bbox_to_anchor =(1,0.5))
         plt.axis("off")
         plt.title(nam[:-30])
         plt.show()
-            
-
+        
+    export_json(dict_coco,"PLS_coco.json")
         
         
 
@@ -259,11 +308,12 @@ if __name__ == "__main__":
     if train:
         hyper_folder, pseudo_rgb, pseudo_name = checkicheck(dataset_train, train_image_dir, hyperspectral_path_train)
         df_train = create_dataframe(hyper_folder, pseudo_rgb, pseudo_name)
+        dataset = dataset_train
     else:
         hyper_folder, pseudo_rgb, pseudo_name = checkicheck(dataset_test, test_image_dir, hyperspectral_path_test, training=False)
         df_train = pd.read_csv("C:/Users/Cornelius/Documents/GitHub/Bscproject/Bsc_Thesis_Instance_segmentation/preprocessing/Pixel_avg_dataframe.csv")
-        #df_train = df_train.iloc[:,1:]
-    PLS_classify(df_train, pseudo_rgb, hyper_folder,pseudo_name)
+        dataset = dataset_test
+    PLS_classify(df_train, pseudo_rgb, hyper_folder,pseudo_name,dataset)
     
 
     
