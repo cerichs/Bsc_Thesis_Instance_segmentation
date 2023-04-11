@@ -116,8 +116,6 @@ def create_dataframe(hyperspectral_img, pseudo_rgb, image_name):
         background = np.zeros(pseudo_shape,dtype = np.uint8)
         background = cv.cvtColor(background, cv.COLOR_BGR2RGB)
         
-        
-        
         ##Now we have the full path to hyperspectral image
         # Load spectral image correctly
         spectral_img = spectral_test(hyperspectral_img[i])
@@ -142,7 +140,7 @@ def create_dataframe(hyperspectral_img, pseudo_rgb, image_name):
         df.loc[len(df)] = temp
     
     # Saving dataframe for later use
-    df.to_csv("Pixel_avg_dataframe.csv",index=False)
+    df.to_csv("Pixel_avg_dataframe_test.csv",index=False)
 
         
     return df
@@ -212,14 +210,17 @@ def PLS_classify(dataframe, pseudo_image_path, hyperspectral_img_path,pseudo_nam
 
     classifier = PLS(algorithm=2)
     Y = np.array(Y)
-    classifier.fit(X, Y, 102)        
+    classifier.fit(X, Y, 102)       
+    df_sanity = pd.read_csv("C:/Users/Cornelius/Documents/GitHub/Bscproject/Bsc_Thesis_Instance_segmentation/preprocessing/Pixel_avg_dataframe_test.csv")
+    XXX =[list(i) for i in df_sanity.values[:,1:]]
     dict_coco = {'annotations':[],
                  'categories':[],
                  'images':[],
                  'info':None,
                  'licenses':[]}
     dict_coco["categories"] = dataset["categories"]
-    for pseudo_img, hyp_img, nam in zip(pseudo_rgb, hyper_folder,pseudo_name):
+    count = 0
+    for k, (pseudo_img, hyp_img, nam) in enumerate(zip(pseudo_rgb, hyper_folder,pseudo_name)):
         #img_name = r"C:\Users\admin\Downloads\hyper\Training\Rye_Midsummer\Sparse_Series1_20_09_08_07_47_28.npy"
 
         # Load spectral image correctly
@@ -233,6 +234,15 @@ def PLS_classify(dataframe, pseudo_image_path, hyperspectral_img_path,pseudo_nam
         classify_img = markers.copy()
         plt.figure(dpi=200)
         plt.imshow(im)
+        result = classifier.predict(XXX[k],A=17)
+        temp_name = "False"
+        if class_list[np.argmax(result)] in nam:
+            count+=1
+            temp_name = "Correct"
+        print(class_list[np.argmax(result)])
+        print(nam)
+        
+        spread = dict.fromkeys(class_list,0)
         for mask_id in np.add(unique_labels,300)[1:]: # offsetting labels to avoid error if mask_id == 255
             mask = markers.copy()
             mask = np.add(mask,300)
@@ -261,7 +271,7 @@ def PLS_classify(dataframe, pseudo_image_path, hyperspectral_img_path,pseudo_nam
                 plt.fill(x, y,alpha=.3, color=color[np.argmax(result)],label = class_list[np.argmax(result)])
                 
                 dict_coco = add_2_coco(dict_coco,dataset,anno,pseudo_img,np.argmax(result))
-
+                spread[class_list[np.argmax(result)]]+=1
             except:
                 print("Warning: Skipping object, Watershed gave 1 pixel object") # it sometimes predict 1 pixel instead of polygon
         dict_coco['images'].append({'id':coco_next_img_id(dict_coco),
@@ -270,13 +280,15 @@ def PLS_classify(dataframe, pseudo_image_path, hyperspectral_img_path,pseudo_nam
                             'height':im.shape[0],
                             'width':im.shape[1]})
         
+        print(spread)
+        print("_____________")
         handles, labels = plt.gca().get_legend_handles_labels()
         by_label = dict(zip(labels, handles))
         plt.legend(by_label.values(), by_label.keys(),loc="center left", bbox_to_anchor =(1,0.5))
         plt.axis("off")
-        plt.title(nam[:-30])
+        plt.title(nam[:-30]+"  "+temp_name)
         plt.show()
-        
+    print(count)  
     export_json(dict_coco,"PLS_coco.json")
         
         
@@ -306,6 +318,7 @@ if __name__ == "__main__":
     
     train = False
     if train:
+        #hyper_folder, pseudo_rgb, pseudo_name = checkicheck(dataset_test, test_image_dir, hyperspectral_path_test,training=False)
         hyper_folder, pseudo_rgb, pseudo_name = checkicheck(dataset_train, train_image_dir, hyperspectral_path_train)
         df_train = create_dataframe(hyper_folder, pseudo_rgb, pseudo_name)
         dataset = dataset_train
