@@ -228,7 +228,7 @@ def PLS_classify(dataframe, pseudo_image_path, hyperspectral_img_path,pseudo_nam
     
         
         im, img_t = preprocess_image(pseudo_img)
-        labels, markers = watershedd(im, img_t)
+        labels, markers = watershedd(im, img_t,plot=True)
         unique_labels = np.unique(markers) # Getting unique labels
         
         classify_img = markers.copy()
@@ -239,8 +239,8 @@ def PLS_classify(dataframe, pseudo_image_path, hyperspectral_img_path,pseudo_nam
         if class_list[np.argmax(result)] in nam:
             count+=1
             temp_name = "Correct"
-        print(class_list[np.argmax(result)])
-        print(nam)
+        print("Image Classification: "+class_list[np.argmax(result)])
+        print("Original image name: " +nam)
         
         spread = dict.fromkeys(class_list,0)
         for mask_id in np.add(unique_labels,300)[1:]: # offsetting labels to avoid error if mask_id == 255
@@ -255,7 +255,8 @@ def PLS_classify(dataframe, pseudo_image_path, hyperspectral_img_path,pseudo_nam
             cropped_im = cv.bitwise_and(im, im, mask=np.uint8(mask[mask==mask_id]))
             
             contours, _ = cv.findContours(np.uint8(mask),cv.RETR_EXTERNAL,cv.CHAIN_APPROX_NONE) # CHAIN_APPROX_NONE to avoid RLE
-            try:
+            if (len(np.squeeze(contours))) > 2:
+
                 anno = watershed_2_coco(contours)
                 
                 start_x = min(anno[0::2])
@@ -272,8 +273,8 @@ def PLS_classify(dataframe, pseudo_image_path, hyperspectral_img_path,pseudo_nam
                 
                 dict_coco = add_2_coco(dict_coco,dataset,anno,pseudo_img,np.argmax(result))
                 spread[class_list[np.argmax(result)]]+=1
-            except:
-                print("Warning: Skipping object, Watershed gave 1 pixel object") # it sometimes predict 1 pixel instead of polygon
+            #except:
+             #   print("Warning: Skipping object, Watershed gave 1 pixel object") # it sometimes predict 1 pixel instead of polygon
         dict_coco['images'].append({'id':coco_next_img_id(dict_coco),
                             'file_name': f"{nam}.jpg",
                             'license':1,
@@ -286,7 +287,7 @@ def PLS_classify(dataframe, pseudo_image_path, hyperspectral_img_path,pseudo_nam
         by_label = dict(zip(labels, handles))
         plt.legend(by_label.values(), by_label.keys(),loc="center left", bbox_to_anchor =(1,0.5))
         plt.axis("off")
-        plt.title(nam[:-30]+"  "+temp_name)
+        plt.title(nam[:-30])
         plt.show()
     print(count)  
     export_json(dict_coco,"PLS_coco.json")
