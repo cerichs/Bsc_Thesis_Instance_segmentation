@@ -114,22 +114,22 @@ def watershedd(original_im, image_t, plot=False):
         start_point = (top_left_x, top_left_y)
         
         #making heat-map of the full image
-        fig, ax = plt.subplots(figsize=(10,10), dpi=100)
-        g1 = sns.heatmap(dist_transform, cmap=cmap, cbar=False, yticklabels=False, xticklabels=False)
-        g1.set(xlabel=None)
-        g1.set(ylabel=None)
-        ax.axis('off')
-        ax.add_patch(patches.Rectangle(start_point,
-                                         window_width,
-                                         window_height,
-                                         edgecolor="red",
-                                         fill = False,
-                                         lw=5))
+        #fig, ax = plt.subplots(figsize=(10,10), dpi=100)
+        #g1 = sns.heatmap(dist_transform, cmap=cmap, cbar=False, yticklabels=False, xticklabels=False)
+        #g1.set(xlabel=None)
+        #g1.set(ylabel=None)
+        #ax.axis('off')
+        #ax.add_patch(patches.Rectangle(start_point,
+        #                                 window_width,
+        #                                 window_height,
+        #                                 edgecolor="red",
+        #                                 fill = False,
+        #                                 lw=5))
+        #
+        #plt.savefig("watershed1.png",dpi=100)
+        #plt.show()
         
-        plt.savefig("watershed1.png",dpi=100)
-        plt.show()
-        
-        
+        """
         subwindow = dist_transform[top_left_y:bottom_right_y, top_left_x:bottom_right_x]
         #Plotting the subwindow
         
@@ -174,6 +174,7 @@ def watershedd(original_im, image_t, plot=False):
         plt.savefig("watershed_pixelplot.png", dpi=200)
         plt.show()
         """
+        """
         plt.title("pixel_plot")
         pixel_plot = plt.imshow(
           subwindow, cmap=cmap, interpolation='nearest', origin='lower')
@@ -197,12 +198,13 @@ def watershedd(original_im, image_t, plot=False):
             #gray = cv.cvtColor(im,cv.COLOR_RGB2GRAY)
             contours, hierarchy = cv.findContours(np.uint8(temp), cv.RETR_EXTERNAL,cv.CHAIN_APPROX_NONE)
             new_array = np.squeeze(contours)
-            temp=[]
-            for j in range(len(new_array)):
-                temp.append(int(new_array[j,0]))
-                temp.append(int(new_array[j,1]))
-            ax.plot(temp[0::2],temp[1::2],linestyle="-",linewidth=3)
-            
+            if (len(new_array)) > 2:
+                temp=[]
+                for j in range(len(new_array)):
+                    temp.append(int(new_array[j,0]))
+                    temp.append(int(new_array[j,1]))
+                ax.plot(temp[0::2],temp[1::2],linestyle="-",linewidth=3)
+                
         ax.axis('off')
         plt.savefig("watershed_output.png",dpi=100)
         plt.show()
