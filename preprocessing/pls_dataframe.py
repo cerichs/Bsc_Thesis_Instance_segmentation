@@ -147,6 +147,26 @@ def create_dataframe(hyperspectral_img, pseudo_rgb, image_name):
         
     return df
 
+def mean_centering(hyperspectral_dataframe):
+    for i in range(hyperspectral_dataframe.shape[0]):
+        hyperspectral_dataframe[i,:] -= hyperspectral_dataframe[i,:].mean()
+        
+    #Get the reference spectrum. Estimate it from the mean    
+    ref = np.mean(hyperspectral_dataframe, axis=0)
+    
+    # Define a new array and populate it with the corrected data    
+    data_msc = np.zeros_like(hyperspectral_dataframe)
+    for i in range(hyperspectral_dataframe.shape[0]):
+        # Run regression
+        ref = list(ref)
+        hyp = list(hyperspectral_dataframe[i,:])
+        fit = np.polyfit(ref, hyp, 1, full=True)
+        # Apply correction
+        data_msc[i,:] = (hyperspectral_dataframe[i,:] - fit[0][1]) / fit[0][0] 
+        
+    return data_msc
+ 
+    
 def add_2_coco(dict_coco,dataset,annotations,pseudo_img,class_id):
     if "Test" in pseudo_img:
         for image in dataset["images"]:
@@ -185,7 +205,11 @@ def PLS_classify(dataframe, pseudo_image_path, hyperspectral_img_path,pseudo_nam
     
     y = dataframe['wl0']
     X = dataframe.values[:, 1:]
-
+    
+    print(X)
+    Xmsc = mean_centering(X.copy())
+    
+    
     if train:
         Y = [y[i] for i in range(len(y))]
     else:
@@ -206,13 +230,26 @@ def PLS_classify(dataframe, pseudo_image_path, hyperspectral_img_path,pseudo_nam
         plt.legend(by_label.values(), by_label.keys())
         plt.xlabel("Wavelengths (nm)")
         plt.ylabel("Absorbance")
-        plt.savefig("absorbance", dpi=200)
+        plt.title("Original Data", loc='center')
+        plt.savefig("absorbance_original", dpi=400)
+        plt.show()
+        
+        for i in range(len(Y)):
+            plt.plot(wl, Xmsc[i].T, color=list(compress(color, Y[i]))[0], label=list(compress(class_list, Y[i]))[0])
+        handles, labels = plt.gca().get_legend_handles_labels()
+        by_label = dict(zip(labels, handles))
+        
+        plt.legend(by_label.values(), by_label.keys())
+        plt.xlabel("Wavelengths (nm)")
+        plt.ylabel("Absorbance")
+        plt.title("MSC", loc='center')
+        plt.savefig("absorbance_MSC", dpi=400)
         plt.show()
         
 
     classifier = PLS(algorithm=2)
     Y = np.array(Y)
-    classifier.fit(X, Y, 102)        
+    classifier.fit(Xmsc, Y, 102)        
     dict_coco = {'annotations':[],
                  'categories':[],
                  'images':[],
@@ -230,8 +267,7 @@ def PLS_classify(dataframe, pseudo_image_path, hyperspectral_img_path,pseudo_nam
         labels, markers = watershedd(im, img_t)
         unique_labels = np.unique(markers) # Getting unique labels
         
-        classify_img = markers.copy()
-        plt.figure(dpi=200)
+        plt.figure(dpi=400)
         plt.imshow(im)
         for mask_id in np.add(unique_labels,300)[1:]: # offsetting labels to avoid error if mask_id == 255
             mask = markers.copy()
@@ -286,12 +322,17 @@ if __name__ == "__main__":
     
     # Training_data
     #annotation_path = r'C:\Users\Cornelius\Documents\GitHub\Bscproject\Bsc_Thesis_Instance_segmentation\preprocessing\COCO_Test.json'
-    train_annotation_path = "C:/Users/Cornelius/Downloads/DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo/Training/COCO_Training.json"#image_dir = 'C:/Users/Cornelius/Documents/GitHub/Bscproject/Bsc_Thesis_Instance_segmentation/preprocessing/'
-    train_image_dir = "C:/Users/Cornelius/Downloads/DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo/Training/images/"
     
+    #train_annotation_path = "C:/Users/Cornelius/Downloads/DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo/Training/COCO_Training.json"#image_dir = 'C:/Users/Cornelius/Documents/GitHub/Bscproject/Bsc_Thesis_Instance_segmentation/preprocessing/'
+    #train_image_dir = "C:/Users/Cornelius/Downloads/DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo/Training/images/"
+    train_annotation_path =r"C:\Users\admin\Downloads\DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo\Training\COCO_Training.json"
+    train_image_dir = r"C:\Users\admin\Downloads\DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo\Training\images"
+
     # Test_data
-    test_annotation_path = "C:/Users/Cornelius/Downloads/DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo/Test/COCO_Test.json"#image_dir = 'C:/Users/Cornelius/Documents/GitHub/Bscproject/Bsc_Thesis_Instance_segmentation/preprocessing/'
-    test_image_dir = "C:/Users/Cornelius/Downloads/DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo/Test/images/"
+    #test_annotation_path = "C:/Users/Cornelius/Downloads/DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo/Test/COCO_Test.json"#image_dir = 'C:/Users/Cornelius/Documents/GitHub/Bscproject/Bsc_Thesis_Instance_segmentation/preprocessing/'
+    #test_image_dir = "C:/Users/Cornelius/Downloads/DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo/Test/images/"
+    test_annotation_path = r"C:\Users\admin\Downloads\DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo\Test\COCO_Test.json"#image_dir = 'C:/Users/Cornelius/Documents/GitHub/Bscproject/Bsc_Thesis_Instance_segmentation/preprocessing/'
+    test_image_dir = r"C:\Users\admin\Downloads\DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo\Test\images"
     
     # Loading training/test dataset
     dataset_train = load_coco(train_annotation_path)
@@ -299,12 +340,14 @@ if __name__ == "__main__":
     
     
     #Loading path to hyperspectral image
-    hyperspectral_path_train = r"C:\Users\Cornelius\Downloads\e4Wr5LFI4L\Training"
-    hyperspectral_path_test = r"C:\Users\Cornelius\Downloads\e4Wr5LFI4L\Test"
+    #hyperspectral_path_train = r"C:\Users\Cornelius\Downloads\e4Wr5LFI4L\Training"
+    hyperspectral_path_train = r"C:\Users\admin\Downloads\hyper\Training"
+    
+    #hyperspectral_path_test = r"C:\Users\Cornelius\Downloads\e4Wr5LFI4L\Test"
 
     
     
-    train = False
+    train = True
     if train:
         hyper_folder, pseudo_rgb, pseudo_name = checkicheck(dataset_train, train_image_dir, hyperspectral_path_train)
         df_train = create_dataframe(hyper_folder, pseudo_rgb, pseudo_name)
