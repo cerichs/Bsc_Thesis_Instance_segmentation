@@ -145,12 +145,33 @@ def create_dataframe(hyperspectral_img, pseudo_rgb, image_name):
         
     return df
 
-def mean_centering(hyperspectral_dataframe):
+def mean_centering_masks(pixel_avg_mask, ref = None):
+    if ref is None:   
+        ref = np.mean(pixel_avg_mask, axis=0)
+    else:
+        ref = ref
+    for i,value in enumerate(pixel_avg_mask):
+        pixel_avg_mask[i] = value - ref[i]
+        
+    
+    ref = list(ref)
+    hyp = list(pixel_avg_mask)
+    fit = np.polyfit(ref, hyp, 1, full=True)
+    # Apply correction
+    data_msc = (pixel_avg_mask - fit[0][1]) / fit[0][0]
+    return data_msc
+
+def mean_centering(hyperspectral_dataframe,ref = None):
+    mean_list = []
     for i in range(hyperspectral_dataframe.shape[0]):
+        mean_list.append(hyperspectral_dataframe[i,:].mean())
         hyperspectral_dataframe[i,:] -= hyperspectral_dataframe[i,:].mean()
         
-    #Get the reference spectrum. Estimate it from the mean    
-    ref = np.mean(hyperspectral_dataframe, axis=0)
+    if ref is None:
+        #Get the reference spectrum. Estimate it from the mean    
+        ref = np.mean(hyperspectral_dataframe, axis=0)
+    else:
+        ref = ref
     
     # Define a new array and populate it with the corrected data    
     data_msc = np.zeros_like(hyperspectral_dataframe)
@@ -162,11 +183,11 @@ def mean_centering(hyperspectral_dataframe):
         # Apply correction
         data_msc[i,:] = (hyperspectral_dataframe[i,:] - fit[0][1]) / fit[0][0] 
         
-    return data_msc
+    return data_msc, ref
  
     
 def add_2_coco(dict_coco,dataset,annotations,pseudo_img,class_id):
-    if "Test" in pseudo_img:
+    if "Test" in pseudo_img or "Training" in pseudo_img:
         for image in dataset["images"]:
             if image["file_name"] in pseudo_img:
                 ids = image["id"]
@@ -204,8 +225,7 @@ def PLS_classify(dataframe, pseudo_image_path, hyperspectral_img_path,pseudo_nam
     y = dataframe['wl0']
     X = dataframe.values[:, 1:]
     
-    print(X)
-    Xmsc = mean_centering(X.copy())
+    Xmsc, mean_list = mean_centering(X.copy())
     
     
     if train:
@@ -248,14 +268,12 @@ def PLS_classify(dataframe, pseudo_image_path, hyperspectral_img_path,pseudo_nam
     classifier = PLS(algorithm=2)
     Y = np.array(Y)
     classifier.fit(Xmsc, Y, 102)        
-    classifier.fit(X, Y, 102)       
+    test_list = []
     df_sanity = pd.read_csv("C:/Users/Cornelius/Documents/GitHub/Bscproject/Bsc_Thesis_Instance_segmentation/preprocessing/Pixel_avg_dataframe_test.csv")
-    XXX =[list(i) for i in df_sanity.values[:,1:]]
-    dict_coco = {'annotations':[],
-                 'categories':[],
-                 'images':[],
-                 'info':None,
-                 'licenses':[]}
+    corrected, _ = mean_centering(df_sanity.values[:,1:], ref = mean_list)
+    XXX =[list(i) for i in corrected]
+
+    dict_coco = empty_dict()
     dict_coco["categories"] = dataset["categories"]
     count = 0
     for k, (pseudo_img, hyp_img, nam) in enumerate(zip(pseudo_rgb, hyper_folder,pseudo_name)):
@@ -264,7 +282,6 @@ def PLS_classify(dataframe, pseudo_image_path, hyperspectral_img_path,pseudo_nam
         # Load spectral image correctly
         spectral_img = spectral_test(hyp_img)
     
-        
         im, img_t = preprocess_image(pseudo_img)
         labels, markers = watershedd(im, img_t,plot=True)
         unique_labels = np.unique(markers) # Getting unique labels
@@ -287,6 +304,7 @@ def PLS_classify(dataframe, pseudo_image_path, hyperspectral_img_path,pseudo_nam
             mask[mask == mask_id] = 255
             
             pixel_avg = pixel_average(spectral_img, mask)[0]
+            pixel_avg = mean_centering_masks(pixel_avg, ref= mean_list)
             result = classifier.predict(pixel_avg, A=17)
 
             cropped_im = cv.bitwise_and(im, im, mask=np.uint8(mask[mask==mask_id]))
@@ -337,16 +355,16 @@ if __name__ == "__main__":
     # Training_data
     #annotation_path = r'C:\Users\Cornelius\Documents\GitHub\Bscproject\Bsc_Thesis_Instance_segmentation\preprocessing\COCO_Test.json'
     
-    #train_annotation_path = "C:/Users/Cornelius/Downloads/DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo/Training/COCO_Training.json"#image_dir = 'C:/Users/Cornelius/Documents/GitHub/Bscproject/Bsc_Thesis_Instance_segmentation/preprocessing/'
-    #train_image_dir = "C:/Users/Cornelius/Downloads/DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo/Training/images/"
-    train_annotation_path =r"C:\Users\admin\Downloads\DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo\Training\COCO_Training.json"
-    train_image_dir = r"C:\Users\admin\Downloads\DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo\Training\images"
+    train_annotation_path = "C:/Users/Cornelius/Downloads/DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo/Training/COCO_Training.json"#image_dir = 'C:/Users/Cornelius/Documents/GitHub/Bscproject/Bsc_Thesis_Instance_segmentation/preprocessing/'
+    train_image_dir = "C:/Users/Cornelius/Downloads/DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo/Training/images/"
+    #train_annotation_path =r"C:\Users\admin\Downloads\DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo\Training\COCO_Training.json"
+    #train_image_dir = r"C:\Users\admin\Downloads\DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo\Training\images"
 
     # Test_data
-    #test_annotation_path = "C:/Users/Cornelius/Downloads/DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo/Test/COCO_Test.json"#image_dir = 'C:/Users/Cornelius/Documents/GitHub/Bscproject/Bsc_Thesis_Instance_segmentation/preprocessing/'
-    #test_image_dir = "C:/Users/Cornelius/Downloads/DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo/Test/images/"
-    test_annotation_path = r"C:\Users\admin\Downloads\DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo\Test\COCO_Test.json"#image_dir = 'C:/Users/Cornelius/Documents/GitHub/Bscproject/Bsc_Thesis_Instance_segmentation/preprocessing/'
-    test_image_dir = r"C:\Users\admin\Downloads\DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo\Test\images"
+    test_annotation_path = "C:/Users/Cornelius/Downloads/DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo/Test/COCO_Test.json"#image_dir = 'C:/Users/Cornelius/Documents/GitHub/Bscproject/Bsc_Thesis_Instance_segmentation/preprocessing/'
+    test_image_dir = "C:/Users/Cornelius/Downloads/DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo/Test/images/"
+    #test_annotation_path = r"C:\Users\admin\Downloads\DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo\Test\COCO_Test.json"#image_dir = 'C:/Users/Cornelius/Documents/GitHub/Bscproject/Bsc_Thesis_Instance_segmentation/preprocessing/'
+    #test_image_dir = r"C:\Users\admin\Downloads\DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo\Test\images"
     
     # Loading training/test dataset
     dataset_train = load_coco(train_annotation_path)
@@ -354,14 +372,14 @@ if __name__ == "__main__":
     
     
     #Loading path to hyperspectral image
-    #hyperspectral_path_train = r"C:\Users\Cornelius\Downloads\e4Wr5LFI4L\Training"
-    hyperspectral_path_train = r"C:\Users\admin\Downloads\hyper\Training"
+    hyperspectral_path_train = r"C:\Users\Cornelius\Downloads\e4Wr5LFI4L\Training"
+    #hyperspectral_path_train = r"C:\Users\admin\Downloads\hyper\Training"
     
-    #hyperspectral_path_test = r"C:\Users\Cornelius\Downloads\e4Wr5LFI4L\Test"
+    hyperspectral_path_test = r"C:\Users\Cornelius\Downloads\e4Wr5LFI4L\Test"
 
     
     
-    train = True
+    train = False
     if train:
         #hyper_folder, pseudo_rgb, pseudo_name = checkicheck(dataset_test, test_image_dir, hyperspectral_path_test,training=False)
         hyper_folder, pseudo_rgb, pseudo_name = checkicheck(dataset_train, train_image_dir, hyperspectral_path_train)
@@ -369,7 +387,7 @@ if __name__ == "__main__":
         dataset = dataset_train
     else:
         hyper_folder, pseudo_rgb, pseudo_name = checkicheck(dataset_test, test_image_dir, hyperspectral_path_test, training=False)
-        df_train = pd.read_csv("C:/Users/Cornelius/Documents/GitHub/Bscproject/Bsc_Thesis_Instance_segmentation/preprocessing/Pixel_avg_dataframe.csv")
+        df_train = pd.read_csv("C:/Users/Cornelius/Documents/GitHub/Bscproject/Bsc_Thesis_Instance_segmentation/preprocessing/Pixel_avg_dataframe_test.csv")
         dataset = dataset_test
     PLS_classify(df_train, pseudo_rgb, hyper_folder,pseudo_name,dataset)
     
