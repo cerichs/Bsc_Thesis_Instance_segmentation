@@ -43,13 +43,13 @@ def add_legend_to_predict(img):
     plt.figure(dpi=200)
     plt.imshow(img)
 
-    handles = [plt.Rectangle((0,0),1,1, color=color, ec="k") for color in colors]  # Create the colored rectangles for the legend
+    handles = [plt.Rectangle((0,0),1,1, color=color, ec="k",alpha=0.5) for color in colors]  # Create the colored rectangles for the legend
     plt.legend(handles, class_list, loc="center left", bbox_to_anchor =(1,0.5), framealpha=1)  # Add the legend to the plot
     plt.axis("off")
 
     plt.show()
 
 if __name__ == "__main__":
-    img_path = r"C:\Users\Cornelius\Documents\GitHub\Bscproject\Bsc_Thesis_Instance_segmentation\window0.jpg"
+    img_path = r"C:\Users\Cornelius\Documents\GitHub\Bscproject\Bsc_Thesis_Instance_segmentation\class_v5m_window1.jpg"
     add_text_to_predict(img_path)
     add_legend_to_predict(img_path)
