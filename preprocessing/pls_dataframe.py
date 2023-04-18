@@ -101,6 +101,7 @@ def checkicheck(dataset, pseudo_image_dir, hyperspectral_path, training=True):
         else:
             continue
     return hyper_path, pseudo_rgbs, img_name
+
     
 
 def create_dataframe(hyperspectral_img, pseudo_rgb, image_name):
@@ -239,10 +240,11 @@ def add_2_coco(dict_coco,dataset,annotations,pseudo_img,class_id):
         return
 
 
-def PLS_show(classifier, pseudo_rgb, hyper_folder,pseudo_name, dataset, mean_list = None, class_list, color):
+def PLS_show(classifier, pseudo_rgb, hyper_folder, pseudo_name, dataset, class_list, color, mean_list = None,):
     
     test_list = []
-    df_sanity = pd.read_csv("C:/Users/Cornelius/Documents/GitHub/Bscproject/Bsc_Thesis_Instance_segmentation/preprocessing/Pixel_avg_dataframe_test.csv")
+    #df_sanity = pd.read_csv("C:/Users/Cornelius/Documents/GitHub/Bscproject/Bsc_Thesis_Instance_segmentation/preprocessing/Pixel_avg_dataframe_test.csv")
+    df_sanity = pd.read_csv(r"C:\Users\admin\Desktop\bachelor\Bsc_Thesis_Instance_segmentation\preprocessing\Pixel_avg_dataframe_test.csv")
     corrected, _ = mean_centering(df_sanity.values[:,1:], ref = mean_list)
     XXX =[list(i) for i in corrected]
 
@@ -348,12 +350,11 @@ def PLS_classify(dataframe, pseudo_image_path, hyperspectral_img_path,pseudo_nam
         Y = [eval(y[i]) for i in range(len(y))] # cause read_csv(), dont ask me why
     
     class_list = ["Rye_Midsummer", "Wheat_H1", "Wheat_H3",  "Wheat_H4",   "Wheat_H5", "Wheat_Halland",  "Wheat_Oland", "Wheat_Spelt"]
-
+    color = ["red", "darkblue", "green", "yellow", "white", "orange", "cyan", "pink"]
 
     # Plots the absorbance of each instance
     if plot:
         wl = np.arange(900, 1700, (1700-900)/102)
-        color = ["red", "darkblue", "green", "yellow", "white", "orange", "cyan", "pink"]
         with plt.style.context('ggplot'):
             for i in range(len(Y)):
                 plt.plot(wl, X[i].T, color=list(compress(color, Y[i]))[0], label=list(compress(class_list, Y[i]))[0])
@@ -401,9 +402,9 @@ def PLS_classify(dataframe, pseudo_image_path, hyperspectral_img_path,pseudo_nam
     classifier_mean.fit(Xmean, Y, 102) 
     classifier_mscmean.fit(Xmsc_mean, Y, 102)
     
-    PLS_show(classifier_orig, pseudo_image_path, hyperspectral_img_path, pseudo_name, dataset, mean_list = None, class_list, color)
-    PLS_show(classifier_mean, pseudo_image_path, hyperspectral_img_path, pseudo_name, dataset, Xmean_mean_list, class_list, color)
-    PLS_show(classifier_mscmean, pseudo_image_path, hyperspectral_img_path, pseudo_name, dataset, Xmean_msc_list, class_list, color)
+    PLS_show(classifier_orig, pseudo_image_path, hyperspectral_img_path, pseudo_name, dataset, class_list, color, mean_list = None)
+    PLS_show(classifier_mean, pseudo_image_path, hyperspectral_img_path, pseudo_name, dataset, class_list, color, Xmean_mean_list)
+    PLS_show(classifier_mscmean, pseudo_image_path, hyperspectral_img_path, pseudo_name, dataset, class_list, color, Xmsc_mean_list)
 
        
         
@@ -449,7 +450,7 @@ if __name__ == "__main__":
         hyper_folder, pseudo_rgb, pseudo_name = checkicheck(dataset_test, test_image_dir, hyperspectral_path_test, training=False)
         df_train = pd.read_csv("C:/Users/Cornelius/Documents/GitHub/Bscproject/Bsc_Thesis_Instance_segmentation/preprocessing/Pixel_avg_dataframe_test.csv")
         dataset = dataset_test
-    PLS_classify(df_train, pseudo_rgb, hyper_folder, pseudo_name, dataset)
+    PLS_classify(df_train, pseudo_rgb, hyper_folder, pseudo_name, dataset, plot=True)
     
 
     
