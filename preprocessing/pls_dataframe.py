@@ -108,7 +108,7 @@ def checkicheck(dataset, pseudo_image_dir, hyperspectral_path, training=True):
 
 def create_dataframe(hyperspectral_img, pseudo_rgb, image_name):
     
-    # Creating dataframe with 103 rows - 1 label row and 102 for the channels
+    # Creating dataframe with 103 columns - 1 label and 102 for the channels
     df = pd.DataFrame( columns = [None]*103)
     df.columns = [f"wl{i}" for i in range(0, 103)]
     
@@ -144,7 +144,6 @@ def create_dataframe(hyperspectral_img, pseudo_rgb, image_name):
     
     # Saving dataframe for later use
     df.to_csv("Pixel_avg_dataframe_test.csv",index=False)
-
         
     return df
 
@@ -171,7 +170,7 @@ def mean_centering_masks(pixel_avg_mask, ref = None):
 
 
 
-def msc_hyp(hyperspectral_dataframe, ref = None):
+def msc_hyp(hyperspectral_dataframe, train=True, fit = None, ref = None):
     
     
     if ref is None:
@@ -183,14 +182,26 @@ def msc_hyp(hyperspectral_dataframe, ref = None):
     # Define a new array and populate it with the data    
     data_msc = np.zeros_like(hyperspectral_dataframe)
     for i in range(hyperspectral_dataframe.shape[0]):
-        # Run regression
         ref = list(ref)
         hyp = list(hyperspectral_dataframe[i,:])
-        fit = np.polyfit(ref, hyp, 1, full=True)
-        # Apply correction
-        data_msc[i,:] = (hyperspectral_dataframe[i,:] - fit[0][1]) / fit[0][0] 
         
-    return data_msc, ref
+        # If fit is None we are training
+        if train is True:
+            if fit is None:
+                # Run regression
+                fit = np.polyfit(ref, hyp, 1, full=True)
+                # Apply correction
+                data_msc[i,:] = (hyperspectral_dataframe[i,:] - fit[0][1]) / fit[0][0]
+            
+            # If fit is not None we are running test-set (we should use the fit-values)
+            else:
+                # Apply correction
+                data_msc[i,:] = (hyperspectral_dataframe[i,:] - fit[0][1]) / fit[0][0]
+        else:
+            # Apply correction
+            data_msc[i,:] = (hyperspectral_dataframe[i,:] - fit[1]) / fit[0]
+        
+    return data_msc, ref, fit
     
     
 
@@ -200,53 +211,69 @@ def mean_centering(data, ref = None):
     if isinstance(data, (np.ndarray, np.generic)):
         mean_list = np.mean(data, axis=0)
         data_mean = data - mean_list if ref is None else data - ref
-        return data_mean, mean_list
     
     # Check if data is still original dataframe-type
     elif isinstance(data, pd.DataFrame):
         mean_list = data.mean(axis=0)
         data_mean = data - mean_list if ref is None else data - ref
-        return data_mean, mean_list
+    
+    return data_mean, mean_list
             
         
  
     
 def add_2_coco(dict_coco,dataset,annotations,pseudo_img,class_id):
-    if "Test" in pseudo_img or "Training" in pseudo_img:
-        for image in dataset["images"]:
-            if image["file_name"] in pseudo_img:
-                ids = image["id"]
-                dimensions = (image["height"],image["width"])
-        class_list = [ 1412692,     1412693,   1412694,   1412695,    1412696,     1412697,      1412698,    1412699,     1412700]
-        start_x = min(annotations[0::2])
-        start_y = min(annotations[1::2])
-        width = max(annotations[0::2])-start_x
-        height = max(annotations[1::2])-start_y
-        mini_img = np.zeros(dimensions,dtype=bool)
-        x, y = (annotations[0::2]),(annotations[1::2])
-        for x_x,y_y in zip(x,y):
-            x_x, y_y = int(x_x), int(y_y)
-            mini_img[y_y,x_x]=True
-        img=mini_img.astype(int)
+    for image in dataset["images"]:
+        if image["file_name"] in pseudo_img:
+            ids = image["id"]
+            dimensions = (image["height"],image["width"])
+    class_list = [ 1412692,     1412693,   1412694,   1412695,    1412696,     1412697,      1412698,    1412699,     1412700]
+    start_x = min(annotations[0::2])
+    start_y = min(annotations[1::2])
+    width = max(annotations[0::2])-start_x
+    height = max(annotations[1::2])-start_y
+    mini_img = np.zeros(dimensions,dtype=bool)
+    x, y = (annotations[0::2]),(annotations[1::2])
+    for x_x,y_y in zip(x,y):
+        x_x, y_y = int(x_x), int(y_y)
+        mini_img[y_y,x_x]=True
+    img=mini_img.astype(int)
 
-        row, col = polygon(y, x, img.shape)
-        img[row,col] = 1
-        
-        dict_coco['annotations'].append({'id': coco_next_anno_id(dict_coco),
-                                  'image_id': ids,
-                                  'segmentation': [annotations],
-                                  'iscrowd': 0,
-                                  'bbox': [start_x, start_y, width, height],
-                                  'area':int(np.sum(img)),
-                                  'category_id':class_list[class_id]
-                                  })
-        return dict_coco
-    else:
-        return
-
-
-def PLS_show(classifier, type_classifier, pseudo_rgb, hyper_folder, pseudo_name, dataset, class_list, color, mean_list = None):
+    row, col = polygon(y, x, img.shape)
+    img[row,col] = 1
     
+    dict_coco['annotations'].append({'id': coco_next_anno_id(dict_coco),
+                              'image_id': ids,
+                              'segmentation': [annotations],
+                              'iscrowd': 0,
+                              'bbox': [start_x, start_y, width, height],
+                              'area':int(np.sum(img)),
+                              'category_id':class_list[class_id]
+                              })
+    return dict_coco
+
+
+
+def PLS_show(classifier, X, Y, type_classifier, pseudo_rgb, hyper_folder, pseudo_name, dataset, mean_list = None, plot=False):
+    """
+    Function that performs Partial Least Squares (PLS) classification on hyperspectral data and displays the results.
+      
+    Args:
+    classifier: PLS classifier object
+    X: Feature matrix (hyperspectral data)
+    Y: Label vector
+    type_classifier: String indicating the type of classifier (e.g., original, mean-centered, MSC-mean-centered)
+    pseudo_rgb: List of pseudo-RGB images
+    hyper_folder: List of paths to hyperspectral images
+    pseudo_name: List of names for the pseudo-RGB images
+    dataset: COCO dataset object
+    mean_list: List of mean values to use for mean-centering
+    plot: Boolean indicating whether or not to plot absorbance spectra for each instance
+      
+    Returns:
+    None
+    """
+  
     test_list = []
     #df_sanity = pd.read_csv("C:/Users/Cornelius/Documents/GitHub/Bscproject/Bsc_Thesis_Instance_segmentation/preprocessing/Pixel_avg_dataframe_test.csv")
     df_sanity = pd.read_csv(r"C:\Users\admin\Desktop\bachelor\Bsc_Thesis_Instance_segmentation\preprocessing\Pixel_avg_dataframe_test.csv")
@@ -257,6 +284,27 @@ def PLS_show(classifier, type_classifier, pseudo_rgb, hyper_folder, pseudo_name,
     dict_coco["categories"] = dataset["categories"]
     count = 0
     
+    
+    class_list = ["Rye_Midsummer", "Wheat_H1", "Wheat_H3",  "Wheat_H4",   "Wheat_H5", "Wheat_Halland",  "Wheat_Oland", "Wheat_Spelt"]
+    color = ["red", "darkblue", "green", "yellow", "white", "orange", "cyan", "pink"]
+
+    # Plots the absorbance of each instance
+    if plot:
+        wl = np.arange(900, 1700, (1700-900)/102)
+        with plt.style.context('ggplot'):
+            for i in range(len(Y)):
+                plt.plot(wl, X[i].T, color=list(compress(color, Y[i]))[0], label=list(compress(class_list, Y[i]))[0])
+            handles, labels = plt.gca().get_legend_handles_labels()
+            by_label = dict(zip(labels, handles))
+            
+            plt.legend(by_label.values(), by_label.keys())
+            plt.xlabel("Wavelengths (nm)")
+            plt.ylabel("Absorbance")
+            plt.title(f"{type_classifier} Data", loc='center')
+            plt.savefig("absorbance_{type_classifier}", dpi=400)
+            plt.show()
+             
+    
     for k, (pseudo_img, hyp_img, nam) in enumerate(zip(pseudo_rgb, hyper_folder,pseudo_name)):
         #img_name = r"C:\Users\admin\Downloads\hyper\Training\Rye_Midsummer\Sparse_Series1_20_09_08_07_47_28.npy"
 
@@ -264,17 +312,17 @@ def PLS_show(classifier, type_classifier, pseudo_rgb, hyper_folder, pseudo_name,
         spectral_img = spectral_test(hyp_img)
     
         im, img_t = preprocess_image(pseudo_img)
-        labels, markers = watershedd(im, img_t,plot=True)
+        labels, markers = watershedd(im, img_t, plot=False)
         unique_labels = np.unique(markers) # Getting unique labels
         
         plt.figure(dpi=400)
         plt.imshow(im)
-        result = classifier.predict(XXX[k],A=17)
+        result1 = classifier.predict(XXX[k],A=17)
         temp_name = "False"
-        if class_list[np.argmax(result)] in nam:
+        if class_list[np.argmax(result1)] in nam:
             count+=1
             temp_name = "Correct"
-        print(f"Image Classification, {type_classifier}: "+class_list[np.argmax(result)])
+        print(f"Image Classification, {type_classifier}: " + class_list[np.argmax(result1)])
         print("Original image name: " +nam)
         
         spread = dict.fromkeys(class_list,0)
@@ -286,9 +334,10 @@ def PLS_show(classifier, type_classifier, pseudo_rgb, hyper_folder, pseudo_name,
             
             pixel_avg = pixel_average(spectral_img, mask)[0]
             if mean_list is not None:
+                print(mean_list)
                 pixel_avg = mean_centering_masks(pixel_avg, ref = mean_list)
             
-            result = classifier.predict(pixel_avg, A=17)
+            result2 = classifier.predict(pixel_avg, A=17)
 
             cropped_im = cv.bitwise_and(im, im, mask=np.uint8(mask[mask==mask_id]))
             
@@ -307,10 +356,10 @@ def PLS_show(classifier, type_classifier, pseudo_rgb, hyper_folder, pseudo_name,
                 masking = overlay_on_larger_image(im,cropped)
                 
                 x, y = anno[0::2],anno[1::2] # comes in pair of [x,y,x,y,x,y], there split with even and uneven
-                plt.fill(x, y,alpha=.3, color=color[np.argmax(result)],label = class_list[np.argmax(result)])
+                plt.fill(x, y, alpha=.3, color=color[np.argmax(result2)],label = class_list[np.argmax(result2)])
                 
-                dict_coco = add_2_coco(dict_coco,dataset,anno,pseudo_img,np.argmax(result))
-                spread[class_list[np.argmax(result)]]+=1
+                dict_coco = add_2_coco(dict_coco,dataset,anno,pseudo_img,np.argmax(result2))
+                spread[class_list[np.argmax(result2)]]+=1
             #except:
              #   print("Warning: Skipping object, Watershed gave 1 pixel object") # it sometimes predict 1 pixel instead of polygon
         dict_coco['images'].append({'id':coco_next_img_id(dict_coco),
@@ -331,88 +380,83 @@ def PLS_show(classifier, type_classifier, pseudo_rgb, hyper_folder, pseudo_name,
     export_json(dict_coco,"PLS_coco.json")
 
 
-def PLS_classify(dataframe, pseudo_image_path, hyperspectral_img_path,pseudo_name,dataset, plot=False):
+def PLS_classify(dataframe, pseudo_image_path, hyperspectral_img_path, pseudo_name, dataset, train_mean=None, train_mean_msc=None, fit=False, train=True, plot=False):
+    
+    
+    """
+    Performs Partial Least Squares (PLS) classification on hyperspectral data and displays the results.
+
+    Args:
+    dataframe: pandas dataframe containing the hyperspectral data
+    pseudo_image_path: list of paths to pseudo-RGB images
+    hyperspectral_img_path: list of paths to hyperspectral images
+    pseudo_name: list of names for the pseudo-RGB images
+    dataset: COCO dataset object
+    train: boolean indicating whether the data is training data (default True)
+    plot: boolean indicating whether or not to plot absorbance spectra for each instance (default False)
+    args: dictionary containing additional arguments to pass to the function (default None)
+
+    Returns:
+    Tuple of mean_list for mean-centered data and Xmsc_mean_list for MSC-mean-centered data
+    """
+    
     
     # Creating three instances to perform PLS
         #1. Original data
         #2. Mean-centered data
         #3. MSC-mean-centered data
+      
         
-    #1. Original data
     y = dataframe['wl0']
     X = dataframe.values[:, 1:]
-    
-    #2. Mean-centered data
-    Xmean, Xmean_mean_list = mean_centering(X)
-    
-    #3. MSC-Mean-centered data
-    Xmsc, mean_list = msc_hyp(X) #First, peforms MSC
-    Xmsc_mean, Xmsc_mean_list = mean_centering(Xmsc) #Then, mean-center the MSC-data
-    
-    
-    
     if train:
         Y = [y[i] for i in range(len(y))]
     else:
         Y = [eval(y[i]) for i in range(len(y))] # cause read_csv(), dont ask me why
-    
-    class_list = ["Rye_Midsummer", "Wheat_H1", "Wheat_H3",  "Wheat_H4",   "Wheat_H5", "Wheat_Halland",  "Wheat_Oland", "Wheat_Spelt"]
-    color = ["red", "darkblue", "green", "yellow", "white", "orange", "cyan", "pink"]
-
-    # Plots the absorbance of each instance
-    if plot:
-        wl = np.arange(900, 1700, (1700-900)/102)
-        with plt.style.context('ggplot'):
-            for i in range(len(Y)):
-                plt.plot(wl, X[i].T, color=list(compress(color, Y[i]))[0], label=list(compress(class_list, Y[i]))[0])
-            handles, labels = plt.gca().get_legend_handles_labels()
-            by_label = dict(zip(labels, handles))
-            
-            plt.legend(by_label.values(), by_label.keys())
-            plt.xlabel("Wavelengths (nm)")
-            plt.ylabel("Absorbance")
-            plt.title("Original Data", loc='center')
-            plt.savefig("absorbance_original", dpi=400)
-            plt.show()
-            
-            for i in range(len(Y)):
-                plt.plot(wl, Xmean[i].T, color=list(compress(color, Y[i]))[0], label=list(compress(class_list, Y[i]))[0])
-            handles, labels = plt.gca().get_legend_handles_labels()
-            by_label = dict(zip(labels, handles))
-            
-            plt.legend(by_label.values(), by_label.keys())
-            plt.xlabel("Wavelengths (nm)")
-            plt.ylabel("Absorbance")
-            plt.title("Mean-centered", loc='center')
-            plt.savefig("absorbance_mean", dpi=400)
-            plt.show()
-            
-            for i in range(len(Y)):
-                plt.plot(wl, Xmsc_mean[i].T, color=list(compress(color, Y[i]))[0], label=list(compress(class_list, Y[i]))[0])
-            handles, labels = plt.gca().get_legend_handles_labels()
-            by_label = dict(zip(labels, handles))
-            
-            plt.legend(by_label.values(), by_label.keys())
-            plt.xlabel("Wavelengths (nm)")
-            plt.ylabel("Absorbance")
-            plt.title("Mean-centered-MSC", loc='center')
-            plt.savefig("absorbance_msc", dpi=400)
-            plt.show()
         
-
-    classifier_orig = PLS(algorithm=2)
-    classifier_mean = PLS(algorithm=2)
-    classifier_mscmean = PLS(algorithm=2)
-    Y = np.array(Y)
     
-    classifier_orig.fit(X, Y, 102)
-    classifier_mean.fit(Xmean, Y, 102) 
-    classifier_mscmean.fit(Xmsc_mean, Y, 102)
+    classifier = PLS(algorithm=2)
+    #1. Original data
+    #classifier_orig = PLS(algorithm=2)
+    classifier.fit(X, Y, 102)
+    PLS_show(classifier, X, Y, "Original", pseudo_image_path, hyperspectral_img_path, pseudo_name, dataset, mean_list = train_mean, plot=False)
     
-    PLS_show(classifier_orig, "Original", pseudo_image_path, hyperspectral_img_path, pseudo_name, dataset, class_list, color, mean_list = None)
-    PLS_show(classifier_mean, "Mean-Centered", pseudo_image_path, hyperspectral_img_path, pseudo_name, dataset, class_list, color, Xmean_mean_list)
-    PLS_show(classifier_mscmean, "MSC-Mean-Centered", pseudo_image_path, hyperspectral_img_path, pseudo_name, dataset, class_list, color, Xmsc_mean_list)
-
+    
+ 
+    
+    
+    if train:
+        #2. Mean-centered data training
+        Xmean, Xmean_mean_list = mean_centering(X)
+        #classifier_mean = PLS(algorithm=2)
+        classifier.fit(Xmean, Y, 102) 
+        PLS_show(classifier, Xmean, Y,  "Mean-Centered", pseudo_image_path, hyperspectral_img_path, pseudo_name, dataset, train_mean, plot=False)
+        
+        
+        #3. MSC-Mean-centered data training
+        Xmsc, mean_list, fit = msc_hyp(X) #First, peforms MSC
+        Xmsc_mean, Xmsc_mean_list = mean_centering(Xmsc) #Then, mean-center the MSC-data
+        #classifier_mscmean = PLS(algorithm=2)
+        classifier.fit(Xmsc_mean, Y, 102)
+        PLS_show(classifier, Xmsc_mean, Y, "MSC-Mean-Centered", pseudo_image_path, hyperspectral_img_path, pseudo_name, dataset, train_mean_msc)
+        
+    else:
+        #2. Mean-centered data test
+        Xmean, Xmean_mean_list = mean_centering(X, ref=train_mean)
+        #classifier_mean = PLS(algorithm=2)
+        classifier.fit(Xmean, Y, 102) 
+        PLS_show(classifier, Xmean, Y,  "Mean-Centered", pseudo_image_path, hyperspectral_img_path, pseudo_name, dataset, train_mean, plot=False)
+        
+        
+        #3. MSC-Mean-centered data test
+        Xmsc, _ , _ = msc_hyp(X, fit, train=False, ref=train_mean_msc, fit=fit) #First, peforms MSC
+        Xmsc_mean, _ = mean_centering(Xmsc, ref=train_mean) #Then, mean-center the MSC-data
+        #classifier_mscmean = PLS(algorithm=2)
+        classifier.fit(Xmsc_mean, Y, 102)
+        PLS_show(classifier, Xmsc_mean, Y, "MSC-Mean-Centered", pseudo_image_path, hyperspectral_img_path, pseudo_name, dataset, Xmsc_mean_list, fit, plot=False)
+        fit = None
+    
+    return Xmean_mean_list, Xmsc_mean_list, fit
        
         
         
@@ -453,12 +497,40 @@ if __name__ == "__main__":
         hyper_folder, pseudo_rgb, pseudo_name = checkicheck(dataset_train, train_image_dir, hyperspectral_path_train)
         df_train = create_dataframe(hyper_folder, pseudo_rgb, pseudo_name)
         dataset = dataset_train
+        Xmean_mean_list, Xmsc_mean_list, fit_train = PLS_classify(df_train, pseudo_rgb, hyper_folder, pseudo_name, dataset, train=True, plot=True)
+        #print(Xmean_mean_list.shape)
+        #print(Xmsc_mean_list.shape)
+        #print(fit_train)
+        
+        # Creating dataframe with 103 columns
+        train_fit = pd.DataFrame( columns = [None]*103)
+        train_fit.columns = [f"wl{i}" for i in range(0, 103)]
+        
+        # Creating list of len 102 with the results from training and label
+        temp = ["Xmean_mean_list"] + Xmean_mean_list.tolist()
+        train_fit.loc[len(train_fit)] = temp
+        
+        temp = ["Xmsc_mean_list"] + Xmsc_mean_list.tolist()
+        train_fit.loc[len(train_fit)] = temp
+        
+        temp = [None]*103
+        train_fit.loc[len(train_fit)] = temp 
+        train_fit["wl0"][2] = fit_train[0][0]
+        train_fit["wl1"][2] = fit_train[0][1]
+        # Saving dataframe for later use
+        train_fit.to_csv("PLS_train_results.csv",index=False)
+        
     else:
+        train_results = pd.read_csv("PLS_train_results.csv",index=False)
+        Xmean_mean_list = train_results.iloc[0].tolist[1:-1]
+        Xmsc_mean_list = train_results.iloc[1].tolist[1:-1]
+        fit_values = train_results.iloc[2].tolist[0:2]
+        
         hyper_folder, pseudo_rgb, pseudo_name = checkicheck(dataset_test, test_image_dir, hyperspectral_path_test, training=False)
         df_train = pd.read_csv("C:/Users/Cornelius/Documents/GitHub/Bscproject/Bsc_Thesis_Instance_segmentation/preprocessing/Pixel_avg_dataframe_test.csv")
         dataset = dataset_test
-    PLS_classify(df_train, pseudo_rgb, hyper_folder, pseudo_name, dataset, plot=True)
-    
+        _, _, _ = PLS_classify(df_train, pseudo_rgb, hyper_folder, pseudo_name, dataset, train_mean=Xmean_mean_list, train_mean_msc=Xmsc_mean_list, fit=fit_values, train=False, plot=True)
+        
 
     
     
