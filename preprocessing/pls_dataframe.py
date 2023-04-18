@@ -147,10 +147,13 @@ def create_dataframe(hyperspectral_img, pseudo_rgb, image_name):
     return df
 
 def mean_centering_masks(pixel_avg_mask, ref = None):
-    if ref is None:   
+    #print(pixel_avg_mask.shape)
+    
+    if ref is None: 
         ref = np.mean(pixel_avg_mask, axis=0)
     else:
         ref = ref
+    
         
     for i,value in enumerate(pixel_avg_mask):
         pixel_avg_mask[i] = value - ref[i]
@@ -240,7 +243,7 @@ def add_2_coco(dict_coco,dataset,annotations,pseudo_img,class_id):
         return
 
 
-def PLS_show(classifier, pseudo_rgb, hyper_folder, pseudo_name, dataset, class_list, color, mean_list = None,):
+def PLS_show(classifier, type_classifier, pseudo_rgb, hyper_folder, pseudo_name, dataset, class_list, color, mean_list = None):
     
     test_list = []
     #df_sanity = pd.read_csv("C:/Users/Cornelius/Documents/GitHub/Bscproject/Bsc_Thesis_Instance_segmentation/preprocessing/Pixel_avg_dataframe_test.csv")
@@ -269,7 +272,7 @@ def PLS_show(classifier, pseudo_rgb, hyper_folder, pseudo_name, dataset, class_l
         if class_list[np.argmax(result)] in nam:
             count+=1
             temp_name = "Correct"
-        print("Image Classification: "+class_list[np.argmax(result)])
+        print(f"Image Classification, {type_classifier}: "+class_list[np.argmax(result)])
         print("Original image name: " +nam)
         
         spread = dict.fromkeys(class_list,0)
@@ -280,7 +283,9 @@ def PLS_show(classifier, pseudo_rgb, hyper_folder, pseudo_name, dataset, class_l
             mask[mask == mask_id] = 255
             
             pixel_avg = pixel_average(spectral_img, mask)[0]
-            pixel_avg = mean_centering_masks(pixel_avg, ref = mean_list)
+            if mean_list is not None:
+                pixel_avg = mean_centering_masks(pixel_avg, ref = mean_list)
+            
             result = classifier.predict(pixel_avg, A=17)
 
             cropped_im = cv.bitwise_and(im, im, mask=np.uint8(mask[mask==mask_id]))
@@ -318,7 +323,7 @@ def PLS_show(classifier, pseudo_rgb, hyper_folder, pseudo_name, dataset, class_l
         by_label = dict(zip(labels, handles))
         plt.legend(by_label.values(), by_label.keys(),loc="center left", bbox_to_anchor =(1,0.5))
         plt.axis("off")
-        plt.title(nam[:-30])
+        plt.title(f"{nam[:-30]}, {type_classifier}")
         plt.show()
     print(count)  
     export_json(dict_coco,"PLS_coco.json")
@@ -402,9 +407,9 @@ def PLS_classify(dataframe, pseudo_image_path, hyperspectral_img_path,pseudo_nam
     classifier_mean.fit(Xmean, Y, 102) 
     classifier_mscmean.fit(Xmsc_mean, Y, 102)
     
-    PLS_show(classifier_orig, pseudo_image_path, hyperspectral_img_path, pseudo_name, dataset, class_list, color, mean_list = None)
-    PLS_show(classifier_mean, pseudo_image_path, hyperspectral_img_path, pseudo_name, dataset, class_list, color, Xmean_mean_list)
-    PLS_show(classifier_mscmean, pseudo_image_path, hyperspectral_img_path, pseudo_name, dataset, class_list, color, Xmsc_mean_list)
+    PLS_show(classifier_orig, "Original", pseudo_image_path, hyperspectral_img_path, pseudo_name, dataset, class_list, color, mean_list = None)
+    PLS_show(classifier_mean, "Mean-Centered", pseudo_image_path, hyperspectral_img_path, pseudo_name, dataset, class_list, color, Xmean_mean_list)
+    PLS_show(classifier_mscmean, "MSC-Mean-Centered", pseudo_image_path, hyperspectral_img_path, pseudo_name, dataset, class_list, color, Xmsc_mean_list)
 
        
         
