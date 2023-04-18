@@ -78,24 +78,26 @@ def checkicheck(dataset, pseudo_image_dir, hyperspectral_path, training=True):
         image_id += 1
         
         # Retrieving folder of the hyperspectral images
-        hyper_folder = os.path.join(hyperspectral_path, "_".join(pseudo_rgb.split("\\")[-1].split("/")[-1].split(".")[0].split("_")[1:3]))
+        #hyper_folder = os.path.join(hyperspectral_path, "_".join(pseudo_rgb.split("\\")[-1].split("/")[-1].split(".")[0].split("_")[1:3]))
         
         # Extracting the hyperspectral files
-        hyperspectral_imgs = os.listdir(hyper_folder)
+        hyperspectral_imgs = os.listdir(hyperspectral_path)
         # Making sure we are not extracting the multiplied- and subtracted-files
         hyperspectral_imgs = [i for i in hyperspectral_imgs if (("Multiplied" not in i) and ("subtracted" not in i))]
         
         if training:
             # Only retrieving the specific file-name of the pseudo-rgb - used to compare with the hyperspectral image-name
-            pseudo_name = pseudo_rgb.split("\\")[-1].split("/")[-1].split(".")[0][9+len(hyper_folder.split("\\")[-1])+1:] + ".npy"
-        
+            #pseudo_name = pseudo_rgb.split("\\")[-1].split("/")[-1].split(".")[0][9+len(hyper_folder.split("\\")[-1])+1:] + ".npy"
+            pseudo_name = pseudo_rgb.split("\\")[-1].split("/")[-1].split(".")[0] + ".npy"
         else:
             # Only retrieving the specific file-name of the pseudo-rgb - used to compare with the hyperspectral image-name
-            pseudo_name = pseudo_rgb.split("\\")[-1].split("/")[-1].split(".")[0][5+len(hyper_folder.split("\\")[-1])+1:] + ".npy"
+            #pseudo_name = pseudo_rgb.split("\\")[-1].split("/")[-1].split(".")[0][5+len(hyper_folder.split("\\")[-1])+1:] + ".npy"
+            pseudo_name = pseudo_rgb.split("\\")[-1].split("/")[-1].split(".")[0] + ".npy"
+            
             
         if pseudo_name in hyperspectral_imgs:
             
-            [hyper_path.append(os.path.join(hyper_folder, i)) for i in hyperspectral_imgs if pseudo_name in i]
+            [hyper_path.append(os.path.join(hyperspectral_path, i)) for i in hyperspectral_imgs if pseudo_name in i]
             pseudo_rgbs.append(pseudo_rgb)
             img_name.append(image_name)
         else:
@@ -439,7 +441,7 @@ if __name__ == "__main__":
     
     #Loading path to hyperspectral image
     #hyperspectral_path_train = r"C:\Users\Cornelius\Downloads\e4Wr5LFI4L\Training"
-    hyperspectral_path_train = r"C:\Users\admin\Downloads\hyper\Training"
+    hyperspectral_path_train = r"C:\Users\admin\Downloads\hyper"
     
     #hyperspectral_path_test = r"C:\Users\Cornelius\Downloads\e4Wr5LFI4L\Test"
 
