@@ -199,7 +199,7 @@ def msc_hyp(hyperspectral_dataframe, train=True, fit = None, ref = None):
                 data_msc[i,:] = (hyperspectral_dataframe[i,:] - fit[0][1]) / fit[0][0]
         else:
             # Apply correction
-            data_msc[i,:] = (hyperspectral_dataframe[i,:] - fit[1]) / fit[0]
+            data_msc[i,:] = (hyperspectral_dataframe[i,:] - float(fit[1])) / float(fit[0])
         
     return data_msc, ref, fit
     
@@ -211,6 +211,8 @@ def mean_centering(data, ref = None):
     if isinstance(data, (np.ndarray, np.generic)):
         mean_list = np.mean(data, axis=0)
         data_mean = data - mean_list if ref is None else data - ref
+        #print(data)
+        #print(mean_list)
     
     # Check if data is still original dataframe-type
     elif isinstance(data, pd.DataFrame):
@@ -304,12 +306,12 @@ def PLS_show(classifier, X, Y, type_classifier, pseudo_rgb, hyper_folder, pseudo
             plt.savefig("absorbance_{type_classifier}", dpi=400)
             plt.show()
              
-    
     for k, (pseudo_img, hyp_img, nam) in enumerate(zip(pseudo_rgb, hyper_folder,pseudo_name)):
         #img_name = r"C:\Users\admin\Downloads\hyper\Training\Rye_Midsummer\Sparse_Series1_20_09_08_07_47_28.npy"
-
+        
         # Load spectral image correctly
-        spectral_img = spectral_test(hyp_img)
+        #spectral_img = spectral_test(hyp_img)
+        spectral_img = np.load(hyp_img)
     
         im, img_t = preprocess_image(pseudo_img)
         labels, markers = watershedd(im, img_t, plot=False)
@@ -324,7 +326,6 @@ def PLS_show(classifier, X, Y, type_classifier, pseudo_rgb, hyper_folder, pseudo
             temp_name = "Correct"
         print(f"Image Classification, {type_classifier}: " + class_list[np.argmax(result1)])
         print("Original image name: " +nam)
-        
         spread = dict.fromkeys(class_list,0)
         for mask_id in np.add(unique_labels,300)[1:]: # offsetting labels to avoid error if mask_id == 255
             mask = markers.copy()
@@ -333,9 +334,9 @@ def PLS_show(classifier, X, Y, type_classifier, pseudo_rgb, hyper_folder, pseudo
             mask[mask == mask_id] = 255
             
             pixel_avg = pixel_average(spectral_img, mask)[0]
-            if mean_list is not None:
-                print(mean_list)
-                pixel_avg = mean_centering_masks(pixel_avg, ref = mean_list)
+            #if mean_list is not None:
+            #    print(mean_list)
+            #    pixel_avg = mean_centering_masks(pixel_avg, ref = mean_list)
             
             result2 = classifier.predict(pixel_avg, A=17)
 
@@ -419,7 +420,7 @@ def PLS_classify(dataframe, pseudo_image_path, hyperspectral_img_path, pseudo_na
     #1. Original data
     #classifier_orig = PLS(algorithm=2)
     classifier.fit(X, Y, 102)
-    PLS_show(classifier, X, Y, "Original", pseudo_image_path, hyperspectral_img_path, pseudo_name, dataset, mean_list = train_mean, plot=False)
+    PLS_show(classifier, X, Y, "Original", pseudo_image_path, hyperspectral_img_path, pseudo_name, dataset, plot=True)
     
     
  
@@ -429,34 +430,37 @@ def PLS_classify(dataframe, pseudo_image_path, hyperspectral_img_path, pseudo_na
         #2. Mean-centered data training
         Xmean, Xmean_mean_list = mean_centering(X)
         #classifier_mean = PLS(algorithm=2)
+        classifier = PLS(algorithm=2)
         classifier.fit(Xmean, Y, 102) 
-        PLS_show(classifier, Xmean, Y,  "Mean-Centered", pseudo_image_path, hyperspectral_img_path, pseudo_name, dataset, train_mean, plot=False)
+        PLS_show(classifier, Xmean, Y, "Mean-Centered", pseudo_image_path, hyperspectral_img_path, pseudo_name, dataset, mean_list = Xmean_mean_list, plot=True)
         
         
         #3. MSC-Mean-centered data training
         Xmsc, mean_list, fit = msc_hyp(X) #First, peforms MSC
         Xmsc_mean, Xmsc_mean_list = mean_centering(Xmsc) #Then, mean-center the MSC-data
         #classifier_mscmean = PLS(algorithm=2)
+        classifier = PLS(algorithm=2)
         classifier.fit(Xmsc_mean, Y, 102)
-        PLS_show(classifier, Xmsc_mean, Y, "MSC-Mean-Centered", pseudo_image_path, hyperspectral_img_path, pseudo_name, dataset, train_mean_msc)
+        PLS_show(classifier, Xmsc_mean, Y, "MSC-Mean-Centered", pseudo_image_path, hyperspectral_img_path, pseudo_name, dataset, mean_list = Xmsc_mean_list, plot=True)
         
+        return Xmean_mean_list, Xmsc_mean_list, fit
     else:
         #2. Mean-centered data test
-        Xmean, Xmean_mean_list = mean_centering(X, ref=train_mean)
+        Xmean, _ = mean_centering(X, ref=train_mean)
         #classifier_mean = PLS(algorithm=2)
+        classifier = PLS(algorithm=2)
         classifier.fit(Xmean, Y, 102) 
-        PLS_show(classifier, Xmean, Y,  "Mean-Centered", pseudo_image_path, hyperspectral_img_path, pseudo_name, dataset, train_mean, plot=False)
+        PLS_show(classifier, Xmean, Y,  "Mean-Centered", pseudo_image_path, hyperspectral_img_path, pseudo_name, dataset, mean_list = train_mean, plot=True)
         
         
         #3. MSC-Mean-centered data test
-        Xmsc, _ , _ = msc_hyp(X, fit, train=False, ref=train_mean_msc, fit=fit) #First, peforms MSC
+        Xmsc, _ , _ = msc_hyp(X, train=False,  fit=fit, ref=train_mean_msc) #First, peforms MSC
         Xmsc_mean, _ = mean_centering(Xmsc, ref=train_mean) #Then, mean-center the MSC-data
         #classifier_mscmean = PLS(algorithm=2)
+        classifier = PLS(algorithm=2)
         classifier.fit(Xmsc_mean, Y, 102)
-        PLS_show(classifier, Xmsc_mean, Y, "MSC-Mean-Centered", pseudo_image_path, hyperspectral_img_path, pseudo_name, dataset, Xmsc_mean_list, fit, plot=False)
-        fit = None
+        PLS_show(classifier, Xmsc_mean, Y, "MSC-Mean-Centered", pseudo_image_path, hyperspectral_img_path, pseudo_name, dataset, mean_list = train_mean_msc, plot=True)
     
-    return Xmean_mean_list, Xmsc_mean_list, fit
        
         
         
@@ -487,7 +491,7 @@ if __name__ == "__main__":
     #hyperspectral_path_train = r"C:\Users\Cornelius\Downloads\e4Wr5LFI4L\Training"
     hyperspectral_path_train = r"C:\Users\admin\Downloads\hyper"
     
-    #hyperspectral_path_test = r"C:\Users\Cornelius\Downloads\e4Wr5LFI4L\Test"
+    hyperspectral_path_test = r"C:\Users\admin\Downloads\hyper"
 
     
     
@@ -521,15 +525,15 @@ if __name__ == "__main__":
         train_fit.to_csv("PLS_train_results.csv",index=False)
         
     else:
-        train_results = pd.read_csv("PLS_train_results.csv",index=False)
-        Xmean_mean_list = train_results.iloc[0].tolist[1:-1]
-        Xmsc_mean_list = train_results.iloc[1].tolist[1:-1]
-        fit_values = train_results.iloc[2].tolist[0:2]
+        train_results = pd.read_csv("PLS_train_results.csv")
+        Xmean_mean_list = train_results.iloc[0].tolist()[1:]
+        Xmsc_mean_list = train_results.iloc[1].tolist()[1:]
+        fit_values = train_results.iloc[2].tolist()[0:2]
         
         hyper_folder, pseudo_rgb, pseudo_name = checkicheck(dataset_test, test_image_dir, hyperspectral_path_test, training=False)
-        df_train = pd.read_csv("C:/Users/Cornelius/Documents/GitHub/Bscproject/Bsc_Thesis_Instance_segmentation/preprocessing/Pixel_avg_dataframe_test.csv")
+        df_train = pd.read_csv(r"C:\Users\admin\Desktop\bachelor\Bsc_Thesis_Instance_segmentation\preprocessing\Pixel_avg_dataframe_test.csv")
         dataset = dataset_test
-        _, _, _ = PLS_classify(df_train, pseudo_rgb, hyper_folder, pseudo_name, dataset, train_mean=Xmean_mean_list, train_mean_msc=Xmsc_mean_list, fit=fit_values, train=False, plot=True)
+        PLS_classify(df_train, pseudo_rgb, hyper_folder, pseudo_name, dataset, train_mean=Xmean_mean_list, train_mean_msc=Xmsc_mean_list, fit=fit_values, train=False, plot=True)
         
 
     
