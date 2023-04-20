@@ -12,5 +12,6 @@
 preprocessing/numpy_improved_kernel.py
 yolo-at-home/
 instance-segm-env/
+datasets/
 *.tiff
 *.zip
