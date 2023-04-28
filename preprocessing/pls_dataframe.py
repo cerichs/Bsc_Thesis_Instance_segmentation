@@ -171,7 +171,7 @@ def mean_centering_masks(pixel_avg_mask, ref = None):
 
 
 def msc_hyp(hyperspectral_dataframe, train=True, fit = None, ref = None):
-    
+    "https://nirpyresearch.com/two-scatter-correction-techniques-nir-spectroscopy-python/"
     
     if ref is None:
         #Get the reference spectrum. Estimate it from the mean    
@@ -256,10 +256,10 @@ def add_2_coco(dict_coco,dataset,annotations,pseudo_img,class_id):
 
 
 
-def PLS_show(classifier, X, Y, type_classifier, pseudo_rgb, hyper_folder, pseudo_name, dataset, mean_list = None, plot=False):
+def PLS_show(classifier, X, Y, type_classifier, pseudo_rgb, hyper_folder, pseudo_name, dataset, mean_list=None):
     """
     Function that performs Partial Least Squares (PLS) classification on hyperspectral data and displays the results.
-      
+
     Args:
     classifier: PLS classifier object
     X: Feature matrix (hyperspectral data)
@@ -271,90 +271,62 @@ def PLS_show(classifier, X, Y, type_classifier, pseudo_rgb, hyper_folder, pseudo
     dataset: COCO dataset object
     mean_list: List of mean values to use for mean-centering
     plot: Boolean indicating whether or not to plot absorbance spectra for each instance
-      
+
     Returns:
     None
     """
-  
-    test_list = []
-    #df_sanity = pd.read_csv("C:/Users/Cornelius/Documents/GitHub/Bscproject/Bsc_Thesis_Instance_segmentation/preprocessing/Pixel_avg_dataframe_test.csv")
-    df_sanity = pd.read_csv(r"C:\Users\admin\Desktop\bachelor\Bsc_Thesis_Instance_segmentation\preprocessing\Pixel_avg_dataframe_test.csv")
-    corrected, _ = mean_centering(df_sanity.values[:,1:], ref = mean_list)
-    XXX =[list(i) for i in corrected]
 
     dict_coco = empty_dict()
     dict_coco["categories"] = dataset["categories"]
     count = 0
-    
-    
+
     class_list = ["Rye_Midsummer", "Wheat_H1", "Wheat_H3",  "Wheat_H4",   "Wheat_H5", "Wheat_Halland",  "Wheat_Oland", "Wheat_Spelt"]
     color = ["red", "darkblue", "green", "yellow", "white", "orange", "cyan", "pink"]
 
-    # Plots the absorbance of each instance
-    if plot:
-        wl = np.arange(900, 1700, (1700-900)/102)
-        with plt.style.context('ggplot'):
-            for i in range(len(Y)):
-                plt.plot(wl, X[i].T, color=list(compress(color, Y[i]))[0], label=list(compress(class_list, Y[i]))[0])
-            handles, labels = plt.gca().get_legend_handles_labels()
-            by_label = dict(zip(labels, handles))
-            
-            plt.legend(by_label.values(), by_label.keys())
-            plt.xlabel("Wavelengths (nm)")
-            plt.ylabel("Absorbance")
-            plt.title(f"{type_classifier} Data", loc='center')
-            plt.savefig("absorbance_{type_classifier}", dpi=400)
-            plt.show()
-             
-    for k, (pseudo_img, hyp_img, nam) in enumerate(zip(pseudo_rgb, hyper_folder,pseudo_name)):
-        #img_name = r"C:\Users\admin\Downloads\hyper\Training\Rye_Midsummer\Sparse_Series1_20_09_08_07_47_28.npy"
-        
-        # Load spectral image correctly
-        #spectral_img = spectral_test(hyp_img)
-        spectral_img = np.load(hyp_img)
-    
-        im, img_t = preprocess_image(pseudo_img)
-        labels, markers = watershedd(im, img_t, plot=False)
-        unique_labels = np.unique(markers) # Getting unique labels
-        
-        plt.figure(dpi=400)
-        plt.imshow(im)
-        result1 = classifier.predict(XXX[k],A=17)
-        temp_name = "False"
-        if class_list[np.argmax(result1)] in nam:
-            count+=1
-            temp_name = "Correct"
-        print(f"Image Classification, {type_classifier}: " + class_list[np.argmax(result1)])
-        print("Original image name: " +nam)
-        spread = dict.fromkeys(class_list,0)
-        for mask_id in np.add(unique_labels,300)[1:]: # offsetting labels to avoid error if mask_id == 255
+    for k, (pseudo_img, hyp_img, nam) in enumerate(zip(pseudo_rgb, hyper_folder, pseudo_name)):
+        ## HSI    spectral_img = np.load(hyp_img)
+
+        # Perform watershed segmentation on the pseudo-RGB image
+        ## MASK     im, img_t = preprocess_image(pseudo_img)
+        labels, markers = watershedd(im, img_t)
+        unique_labels = np.unique(markers)
+
+        # Get prediction for the entire pseudo-RGB image
+        result1 = classifier.predict(X[k], A=17)
+
+        # Create dictionary to keep track of predicted spread
+        spread = dict.fromkeys(class_list, 0)
+
+        for mask_id in np.add(unique_labels, 300)[1:]: # Offset labels to avoid error if mask_id == 255
             mask = markers.copy()
-            mask = np.add(mask,300)
+            mask = np.add(mask, 300)
             mask[mask != mask_id] = 0
             mask[mask == mask_id] = 255
-            
+
+            # Compute the pixel average of the spectral image for each mask
             pixel_avg = pixel_average(spectral_img, mask)[0]
-            #if mean_list is not None:
-            #    print(mean_list)
-            #    pixel_avg = mean_centering_masks(pixel_avg, ref = mean_list)
-            
+
+            # Get prediction for the mask
             result2 = classifier.predict(pixel_avg, A=17)
 
+            # Compute the cropped image for the mask
             cropped_im = cv.bitwise_and(im, im, mask=np.uint8(mask[mask==mask_id]))
-            
-            contours, _ = cv.findContours(np.uint8(mask),cv.RETR_EXTERNAL,cv.CHAIN_APPROX_NONE) # CHAIN_APPROX_NONE to avoid RLE
+            contours, _ = cv.findContours(np.uint8(mask), cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE) # CHAIN_APPROX_NONE to avoid RLE
             if (len(np.squeeze(contours))) > 2:
-
+                # Add the mask to the COCO dataset
                 anno = watershed_2_coco(contours)
-                
+                dict_coco = add_2_coco(dict_coco, dataset, anno, pseudo_img, np.argmax(result2))
+
+                # Update the spread dictionary
+                spread[class_list[np.argmax(result2)]] += 1
+
+                # Compute the cropped image and overlay on the original image
                 start_x = min(anno[0::2])
                 start_y = min(anno[1::2])
                 end_x = max(anno[0::2])-start_x
                 end_y = max(anno[1::2])-start_y
     
                 cropped = cropped_im[start_y:start_y+end_y,start_x:start_x+end_x]
-                
-                masking = overlay_on_larger_image(im,cropped)
                 
                 x, y = anno[0::2],anno[1::2] # comes in pair of [x,y,x,y,x,y], there split with even and uneven
                 plt.fill(x, y, alpha=.3, color=color[np.argmax(result2)],label = class_list[np.argmax(result2)])

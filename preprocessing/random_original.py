@@ -30,9 +30,10 @@ def mask_in_window(mask, window_top_x,window_bottom_x, window_top_y, window_bott
 
     
 
-def extract_subwindow(original_img, new_annotation, new_id, window_size, img_id, image_dir, dataset, plot_mask=False):
+def extract_subwindow(original_img, new_annotation, new_id, window_size, image_id, image_dir, image_name, dataset, z=1234, plot_mask=False):
     window_height, window_width = window_size
-
+    
+    np.random.seed(z)
     top_left_x = np.random.randint(0, original_img.shape[1] - window_width)
     top_left_y = np.random.randint(0, original_img.shape[0] - window_height)
 
@@ -43,8 +44,12 @@ def extract_subwindow(original_img, new_annotation, new_id, window_size, img_id,
 
     #new_annotation = empty_dict()
     mask = np.zeros((window_height, window_width), dtype=np.uint8)
+    
+    # Precompute file_name
+    #filename_dict = {file["id"]: file["file_name"] for file in dataset["images"]}
 
-    for ann in dataset['annotations']:
+    
+    for k, ann in enumerate(dataset['annotations']):
         if ann['image_id'] == image_id:
             
             if mask_in_window(ann['segmentation'][0], top_left_x, bottom_right_x, top_left_y, bottom_right_y):
@@ -106,15 +111,15 @@ def extract_subwindow(original_img, new_annotation, new_id, window_size, img_id,
                                            'area': ann['area'],
                                            'category_id': ann['category_id']})
                     
-    
+
+        
     new_annotation['images'].append({'id':new_id,
-                            'file_name': f"window{new_id}.jpg",
+                            'file_name': f'{new_id}_window_{image_name}.jpg',
                             'license':1,
                             'height':subwindow.shape[0],
                             'width':subwindow.shape[1]})
     
-    
-    subwindow = cv.cvtColor(subwindow, cv.COLOR_BGR2RGB)
+   
     cv.imwrite(f"images/window{new_id}.jpg",subwindow)
 
     if plot_mask == True:
@@ -186,13 +191,14 @@ if __name__ == "__main__":
                 
                 subwindow_size = (256, 256)
                 
+                image_name = image_name.split(".")[0]
                 subwindow, new_annotation = extract_subwindow(img, new_annotation, c, subwindow_size, image_id, image_dir, dataset, plot_mask=False)
                 #subwindow, new_annotation, mask = extract_subwindow(img, subwindow_size, image_id, image_dir, dataset)
                 
                 #c = image_id
                 
-                subwindow = cv.cvtColor(subwindow, cv.COLOR_BGR2RGB)
-                cv.imwrite(f"images/window{c}.jpg",subwindow)
+                #subwindow = cv.cvtColor(subwindow, cv.COLOR_BGR2RGB)
+                cv.imwrite(f"images/window_{image_name}_{c}.jpg",subwindow)
                 c += 1
             
         
