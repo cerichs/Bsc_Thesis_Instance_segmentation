@@ -14,5 +14,7 @@ yolo-at-home/
 yolo-at-home-hsi/
 instance-segm-env/
 datasets/
+Pendan/
+pendan-env/
 *.tiff
 *.zip
