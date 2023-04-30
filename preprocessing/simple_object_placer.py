@@ -1,25 +1,11 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Fri Mar 10 12:04:37 2023
+import sys
+sys.path.append("..")
+from .Display_mask import load_coco, load_annotation, find_image, draw_img
+from .crop_from_mask import crop_from_mask, fill_mask,overlay_on_larger_image
+from two_stage.watershed_2_coco import empty_dict, export_json
 
-@author: Cornelius
-"""
 import numpy as np
-import matplotlib.pyplot as plt
-#from crop_from_mask import overlay_on_larger_image
-# -*- coding: utf-8 -*-
-"""
-Created on Tue Feb 14 11:10:49 2023
-
-@author: Cornelius
-"""
-from Display_mask import load_coco, load_annotation, find_image, draw_img
-from crop_from_mask import crop_from_mask, fill_mask,overlay_on_larger_image
-from watershed_2_coco import empty_dict, export_json
-import numpy as np
-import matplotlib.pyplot as plt
 import cv2 as cv
-from skimage.draw import polygon
 
 def find_x_y(larger_image,smaller_image,annotation,height,width):
     run=True

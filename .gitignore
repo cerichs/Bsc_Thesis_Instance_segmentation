@@ -16,3 +16,4 @@ instance-segm-env/
 datasets/
 *.tiff
 *.zip
+two_stage/numpy_improved_kernel.py

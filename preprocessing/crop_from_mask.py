@@ -1,12 +1,6 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Tue Feb 14 11:10:49 2023
+from .Display_mask import load_coco, load_annotation, find_image
 
-@author: Cornelius
-"""
-from Display_mask import load_coco, load_annotation, find_image
 import numpy as np
-import matplotlib.pyplot as plt
 import cv2 as cv
 from skimage.draw import polygon
 
@@ -17,7 +11,7 @@ def crop_from_mask(dataset,annotation_numb,cropped_im):
     ----------
     annotation_numb : list, [x,y,width,height]
         The annotation number from the COCO dataset.
-    cropped_im : Array-like image
+    cropped_im : Array-like image<
         The image from fill_mask, where the background is removed and only
         region of intereset is shown, rest is black.
 
