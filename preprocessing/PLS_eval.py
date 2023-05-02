@@ -200,8 +200,8 @@ def coco_2_masked_img(dataset_path):
 
 def main():
     #coco_2_masked_img(r"I:\HSI\COCO_HSI_windowed_val_PLS_eval.json") # uncomment to make PNG images with masks from a COCO json file
-    #data = pd.read_csv(r"C:\Users\Corne\Downloads\Pixel_grain_avg_dataframe_train_whole_img.csv")
-    data = pd.read_csv(r"C:\Users\Corne\Downloads\Pixel_grain_avg_dataframe_train_grain.csv")
+    data = pd.read_csv(r"C:\Users\Corne\Downloads\Pixel_grain_avg_dataframe_train_whole_img.csv")
+    #data = pd.read_csv(r"C:\Users\Corne\Downloads\Pixel_grain_avg_dataframe_train_grain.csv")
     data = data.dropna(ignore_index=True)
     X = data.iloc[:,2:]
     y_test = data.label
