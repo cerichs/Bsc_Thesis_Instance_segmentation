@@ -2,9 +2,8 @@ from .preprocess_image import binarization, spectral_test
 
 import numpy as np
 from skimage.draw import polygon
-from tqdm import tqdm
 import os
-
+import re
 
 
 def find_imgs(dataset, hyp_folder, pseudo_folder):
@@ -14,6 +13,9 @@ def find_imgs(dataset, hyp_folder, pseudo_folder):
     img_name = []
     ids = []
     
+    def get_window_number(filename):
+        return int(re.findall(r'\d+', filename)[0])
+
     for image_id in range(len(dataset["images"])):
        
         # Extracting file-names in dataset
@@ -27,6 +29,7 @@ def find_imgs(dataset, hyp_folder, pseudo_folder):
         
         # Filter out any multiplied or subtracted hyperspectral images
         hyperspectral_imgs = [i for i in hyperspectral_imgs if ( ("Multiplied" not in i) and ("subtracted" not in i) )]
+        hyperspectral_imgs = np.unique(hyperspectral_imgs)
         #hyper_path = os.path.join(hyp_folder, image_name)
 
         # As the coco-dataset has initial-index 0, we start by this
@@ -38,19 +41,21 @@ def find_imgs(dataset, hyp_folder, pseudo_folder):
         # Loop over each hyperspectral image and append the path to the matching hyperspectral image
         if pseudo_name in hyperspectral_imgs:
             
+            
             [hyper_path.append(os.path.join(hyp_folder, i)) for i in hyperspectral_imgs if pseudo_name in i]
             pseudo_rgbs.append(pseudo_rgb_path)
             img_name.append(pseudo_name.split(".")[0] + ".jpg")
             ids.append(image_id)
         else:
             continue
+    hyper_path = sorted(np.unique(hyper_path), key=get_window_number)
+    
     return hyper_path, pseudo_rgbs, img_name, ids
 
 
 def process_data(dataset, hyper_imgs, pseudo_imgs, img_names, image_ids, whole_img=False):
     
     #HSI = [spectral_test(hyper_imgs[image]) for image in range(len(hyper_imgs))]
-    hyper_imgs = np.unique(hyper_imgs)
     HSI = [np.load(hyper_imgs[image]) for image in range(len(hyper_imgs))]
     g_masks = []
     
@@ -113,11 +118,15 @@ def extract_binary_kernel(dataset, pseudo_rgbs_path, img_name):
         
         mini_img = np.zeros((mask.shape[0], mask.shape[1]), dtype=bool)
         x, y = segmentation[annotation_numb]["segmentation"][0][0::2], segmentation[annotation_numb]["segmentation"][0][1::2]
+
         
         # Generate a binary mask for the annotation
+        print(mini_img.shape)
         for x_x, y_y in zip(x, y):
+            
             x_x, y_y = int(x_x), int(y_y)
             mini_img[y_y, x_x] = True
+            
         binary_grain_mask = mini_img.astype(int)
         
         # Fill in the polygonal region of the annotation
@@ -155,7 +164,7 @@ def pixel_average(hyperspectral_image, binary_mask, image_id, image_name):
     id_img = []
     
     # Loop through each binary mask
-    for mask in tqdm(binary_mask):
+    for mask in binary_mask:
         # Extract the pixel values for each grain mask
         grains = hyperspectral_image[mask == 255, :] # Only consider pixels with value 255
         

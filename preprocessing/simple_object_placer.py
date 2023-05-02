@@ -1,32 +1,59 @@
+import numpy as np
+import cv2 as cv
 import sys
+
 sys.path.append("..")
+
 from .Display_mask import load_coco, load_annotation, find_image, draw_img
 from .crop_from_mask import crop_from_mask, fill_mask,overlay_on_larger_image
 from two_stage.watershed_2_coco import empty_dict, export_json
 
-import numpy as np
-import cv2 as cv
+
 
 def find_x_y(larger_image,smaller_image,annotation,height,width):
-    run=True
+    """
+    Find the x and y coordinates to place a smaller_image in a larger_image.
+    
+    Args:
+        larger_image: The larger image where the smaller_image will be placed.
+        smaller_image: The smaller image to be placed in the larger_image.
+        annotation: The annotation data for the smaller_image.
+        height: The height of the smaller_image.
+        width: The width of the smaller_image.
+
+    Returns:
+        tuple: x, y coordinates and a boolean indicating if the placement is successful.
+    """
     count = 0
-    while(run):
-        x = np.random.randint(0,(larger_image.shape[1]-smaller_image.shape[1]))
-        y = np.random.randint(0,(larger_image.shape[0]-smaller_image.shape[0]))
-        x,y = edge_grain(annotation,height,width,x,y,larger_image)
-        temp = larger_image[y:y+smaller_image.shape[0], x:x+smaller_image.shape[1]]
-        overlap_amount = np.sum(np.multiply(temp,smaller_image))
-        #print(overlap_amount)
-        if overlap_amount<25000: #TODO make it a ratio of kernel, as smaller kernels constantly overlapped
-            run = False
-            keep = True
-        count+=1
-        if count>50:
-            run = False
-            keep = False
-    return x, y, keep
+    while True:
+        x = np.random.randint(0, (larger_image.shape[1] - smaller_image.shape[1]))
+        y = np.random.randint(0, (larger_image.shape[0] - smaller_image.shape[0]))
+        x, y = edge_grain(annotation, height, width, x, y, larger_image)
+        temp = larger_image[y:y + smaller_image.shape[0], x:x + smaller_image.shape[1]]
+        overlap_amount = np.sum(np.multiply(temp, smaller_image))
+
+        if overlap_amount < 25000:  # TODO: make it a ratio of kernel, as smaller kernels constantly overlapped
+            return x, y, True
+        count += 1
+        if count > 50:
+            return x, y, False
+
 
 def edge_grain(annotation,height,width,x,y,larger_image):
+    """
+    Prevents the smaller image from being placed too close to the edges of the larger image.
+    
+    Args:
+        annotation: The annotation data for the smaller_image.
+        height: The height of the smaller_image.
+        width: The width of the smaller_image.
+        x: The x-coordinate of the smaller_image placement.
+        y: The y-coordinate of the smaller_image placement.
+        larger_image: The larger image where the smaller_image will be placed.
+        
+    Returns:
+        tuple: The adjusted x and y coordinates for the placement.
+    """
     if (max(annotation[0][1::2])>=height-1):
         return x,(larger_image.shape[0]-(max(annotation[0][1::2])-min(annotation[0][1::2])))-1
     elif (max(annotation[0][0::2])>=width-1):
@@ -43,12 +70,48 @@ def edge_grain(annotation,height,width,x,y,larger_image):
         return x,y
 
 def coco_next_anno_id(coco_dict):
+    """
+    Return the next available annotation id in the COCO dataset.
+    
+    Args:
+        coco_dict: The COCO dataset dictionary.
+
+    Returns:
+        The next available image id.
+    """
     return len(coco_dict['annotations'])+1
 
 def coco_next_img_id(coco_dict):
+    """
+    Return the next available image id in the COCO dataset.
+    
+    Args:
+        dataset: The COCO dataset
+        smaller_image: The smaller image to be placed in the larger_image.
+        image_id: The id of the image in the dataset.
+        annotation_numb: The number of the annotation for the image.
+        x: The x-coordinate of the placement.
+        y: The y-coordinate of the placement.
+
+    Returns:
+        The new annotation coordinates.
+    """
     return len(coco_dict['images'])+1
 
 def coco_new_anno_coords(dataset,image_id,annotation_numb,x,y):
+    """
+    Calculate the new annotation coordinates for the COCO dataset.
+    
+    Args:
+        larger_image: The larger image where the smaller_image will be placed
+        smaller_image: The smaller image to be placed in the larger_image
+        annotation: The annotation data for the smaller_image
+        height: The height of the smaller_image
+        width: The width of the smaller_image
+
+    Returns:
+        tuple: x, y coordinates and a boolean indicating if the placement is successful.
+    """
     width = min(dataset['annotations'][annotation_numb]['segmentation'][0][0::2])
     height = min(dataset['annotations'][annotation_numb]['segmentation'][0][1::2])
     new_annote = [None]*len(dataset['annotations'][annotation_numb]['segmentation'][0]) # new list the same size
@@ -59,6 +122,19 @@ def coco_new_anno_coords(dataset,image_id,annotation_numb,x,y):
     return new_annote
 
 def coco_new_bbox(x,y,dataset,image_id,annotation_numb):
+    """
+    Calculate the new bounding box for the COCO dataset.
+    
+    Args:
+        larger_image: The larger image where the smaller_image will be placed
+        smaller_image: The smaller image to be placed in the larger_image
+        annotation: The annotation data for the smaller_image
+        height: The height of the smaller_image
+        width: The width of the smaller_image
+
+    Returns:
+        tuple: x, y coordinates and a boolean indicating if the placement is successful.
+    """
     annote = coco_new_anno_coords(dataset,image_id,annotation_numb,x,y)
     width = max(annote[0::2])-min(annote[0::2])
     height = max(annote[1::2])-min(annote[1::2])
@@ -155,6 +231,7 @@ if __name__=="__main__":
             
             image_dir2 = r"C:\Users\admin\Desktop\bachelor\Bsc_Thesis_Instance_segmentation\preprocessing\images/"
             draw_img(dict_coco, new_id, annote_ids, image_dir2)
+            
 # =============================================================================
 # ov = np.zeros((300, 300))
 # new_obj = np.zeros((300, 300))

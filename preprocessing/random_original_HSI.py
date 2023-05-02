@@ -1,27 +1,31 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Tue Mar 21 11:06:01 2023
+import sys
+sys.path.append("..")
 
-@author: admin
-"""
-
-import os
-#os.chdir(r"C:\Users\admin\Desktop\bachelor\Bsc_Thesis_Instance_segmentation\preprocessing")
-
-from Display_mask import load_coco, load_annotation, find_image, draw_img
-from crop_from_mask import crop_from_mask, fill_mask,overlay_on_larger_image
-from watershed_2_coco import empty_dict, export_json
+from Display_mask import load_coco
+from two_stage.watershed_2_coco import empty_dict, export_json
 from simple_object_placer import coco_next_anno_id
-import numpy as np
-import matplotlib.pyplot as plt
-import cv2 as cv
-from skimage.draw import polygon
 from random_original import extract_subwindow
-from pls_opti import spectral_test
+from preprocess_image import spectral_test
 
+import numpy as np
+import cv2 as cv
+import os
 
 
 def mask_in_window(mask, window_top_x,window_bottom_x, window_top_y, window_bottom_y):
+    """
+    Checks if mask coordinates are within the given window.
+    
+    Args:
+        mask (list): List of mask coordinates.
+        window_top_x (int): Top-left x-coordinate of the window.
+        window_bottom_x (int): Bottom-right x-coordinate of the window.
+        window_top_y (int): Top-left y-coordinate of the window.
+        window_bottom_y (int): Bottom-right y-coordinate of the window.
+    
+    Returns:
+        bool: True if mask is in the window, False otherwise.
+    """
     is_in = False
     for i in range(len(mask[0::2])) :
         if (window_top_x <= mask[0::2][i] <= window_bottom_x) and  (window_top_y <= mask[1::2][i] <= window_bottom_y):
@@ -33,19 +37,43 @@ def mask_in_window(mask, window_top_x,window_bottom_x, window_top_y, window_bott
     
 
 def extract_subwindow_HSI(original_img, new_annotation, new_id, window_size, img_id, image_dir, image_name, dataset, z=1234, plot_mask=False):
+    """
+    Extract a subwindow from the original image and update the annotation information.
+
+    Args:
+        original_img (ndarray): Original image.
+        new_annotation (dict): New annotation dictionary.
+        new_id (int): New ID for the extracted subwindow.
+        window_size (tuple): Window size as (height, width).
+        image_id (int): Image ID of the original image.
+        image_dir (str): Directory containing the original image.
+        dataset (dict): Original dataset information.
+        z (int, optional): Random seed. Defaults to 1234.
+        plot_mask (bool, optional): Whether to plot the mask. Defaults to False.
+
+    Returns:
+        tuple: Tuple containing the extracted subwindow (ndarray) and the updated new_annotation (dict).
+    """
+    
+    # Get window dimensions
     window_height, window_width, window_channels = window_size
     
+    # Set random seed for reproducibility
     np.random.seed(z)
+    
+    # Generate random top left corner for the subwindow
     top_left_x = np.random.randint(0, original_img.shape[1] - window_width)
     top_left_y = np.random.randint(0, original_img.shape[0] - window_height)
 
+    # Calculate bottom right corner of the subwindow
     bottom_right_x = top_left_x + window_width
     bottom_right_y = top_left_y + window_height
 
-    subwindow = original_img[top_left_y:bottom_right_y, top_left_x:bottom_right_x,:]
+    # Extract the subwindow from the original image
+    subwindow = original_img[top_left_y:bottom_right_y, top_left_x:bottom_right_x]
 
-    #new_annotation = empty_dict()
-    mask = np.zeros((window_height, window_width, window_channels), dtype=np.float64)
+    # Initialize a new mask for the subwindow
+    mask = np.zeros((window_height, window_width), dtype=np.uint8)
     
     # Precompute file_name
     #filename_dict = {file["id"]: file["file_name"] for file in dataset["images"]}
@@ -80,14 +108,14 @@ def extract_subwindow_HSI(original_img, new_annotation, new_id, window_size, img
                     if new_x <= 0:
                         new_x = 0
                     
-                    elif new_x > window_width:
-                        new_x = window_width
+                    elif new_x >= window_width:
+                        new_x = window_width - 1
                     
                     if new_y <= 0:
                         new_y = 0
                     
-                    elif new_y > window_height:
-                        new_y = window_height
+                    elif new_y >= window_height:
+                        new_y = window_height - 1
 
                     dup_dict[(new_x,new_y)] = 0
                     
@@ -127,14 +155,15 @@ if __name__ == "__main__":
 
     #annotation_path = r'C:\Users\Cornelius\Documents\GitHub\Bscproject\Bsc_Thesis_Instance_segmentation\preprocessing\COCO_Test.json'
     #annotation_path = 'C:/Users/Cornelius/Downloads/DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo/Training/COCO_Training.json'
-    annotation_path = r"C:\Users\jver\Desktop\dtu\DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo\Training\COCO_Training.json"
+    annotation_path = r"C:\Users\jver\Desktop\dtu\DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo\Validation\COCO_Validation.json"
     #image_dir = 'C:/Users/Cornelius/Downloads/DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo/Test/images/
-    HSI_image_dir = r"C:\Users\jver\Desktop\Training"
+    HSI_image_dir = r"C:\Users\jver\Desktop\Validation"
     
     
-    rgb_image_dir = r'C:\Users\jver\Desktop\dtu\DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo\Training\images/'
+    rgb_image_dir = r'C:\Users\jver\Desktop\dtu\DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo\Validation\images/'
     
     
+    # Initialize empty annotation dictionaries for HSI and RGB images
     HSI_new_annotation = empty_dict()
     dataset = load_coco(annotation_path)
     HSI_new_annotation["categories"] = dataset["categories"]
@@ -147,17 +176,17 @@ if __name__ == "__main__":
     class_check = [0]*8 
     class_check_Dense = [0]*8 
     class_check_sparse = [0]*8 
-    c = 0
-    n = 1000
-    while (c < n):
-        
+    c = 1
+    n = 100
+    while (c < n+1):
+
         image_id = np.random.randint(0, len(dataset["images"]))   ### choose random image
         
         image_name = dataset["images"][image_id]["file_name"]
         image_id = image_id + 1
         
         ids = [class_list.index(names) for names in class_list if names in image_name]
-        if (class_check[ids[0]]<= (n//len(class_list))):
+        if (class_check[ids[0]] <= (n//len(class_list))):
             keep = False
             if "Dense" in image_name:
                 if class_check_Dense[ids[0]] <= (n//(len(class_list)*2)):
@@ -195,7 +224,6 @@ if __name__ == "__main__":
                 
                 rgb_subwindow_size = (256, 256)
                 
-                print(image_name)
                 rgb_subwindow, rgb_new_annotation = extract_subwindow(img, rgb_new_annotation, c, rgb_subwindow_size, image_id, rgb_image_dir, image_name, dataset, c, plot_mask=False)
                 #print(rgb_new_annotation)
                 #extract_subwindow(original_img, new_annotation, new_id, window_size, img_id, image_dir, dataset, plot_mask=False):
@@ -203,17 +231,20 @@ if __name__ == "__main__":
                 
                 #c = image_id
                 
+                print(image_name)
                 #subwindow = cv.cvtColor(subwindow, cv.COLOR_BGR2RGB)
-                HSI_output_path = r"C:\Users\jver\Desktop\Training\windows/" 
+                HSI_output_path = r"C:\Users\jver\Desktop\Validation\windows/" 
                 np.save(HSI_output_path + f"{c}_window_{image_name}.npy",HSI_subwindow)
                 
-                rgb_output_path = r"C:\Users\jver\Desktop\Training\rgb/" 
+                rgb_output_path = r"C:\Users\jver\Desktop\Validation\rgb/" 
                 subwindow = cv.cvtColor(rgb_subwindow, cv.COLOR_RGB2BGR)
                 cv.imwrite(rgb_output_path + f"{c}_window_{image_name}.jpg", subwindow)
                 #np.save(rgb_output_path + f"window{c}.jpg", rgb_subwindow)
-                
-                c += 1 
-    export_json(HSI_new_annotation,r"C:\Users\jver\Desktop\Training\windows/COCO_HSI_windowed.json")
-    export_json(rgb_new_annotation,r"C:\Users\jver\Desktop\Training\rgb/COCO_rgb_windowed.json")
+                c += 1
+                print(c)
+        else:
+            continue
+    export_json(HSI_new_annotation,r"C:\Users\jver\Desktop\Validation\windows/COCO_HSI_windowed.json")
+    export_json(rgb_new_annotation,r"C:\Users\jver\Desktop\Validation\rgb/COCO_rgb_windowed.json")
     
    

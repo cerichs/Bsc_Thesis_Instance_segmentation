@@ -5,7 +5,6 @@ from two_stage.HSI_mean_msc import mean_centering, msc_hyp
 from two_stage.output_results import create_dataframe
 
 
-
 def main():
     """
     Main function that loads the dataset and performs PLS classification on the training and test sets.
@@ -16,7 +15,7 @@ def main():
     #test_annotation_path = r"C:\Users\jver\Desktop\dtu\DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo\Test\COCO_Test.json"
     #test_image_dir = r"C:\Users\jver\Desktop\dtu\DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo\Test\images"
     test_annotation_path = r"C:\Users\jver\Desktop\Validation\rgb\COCO_rgb_windowed.json"
-    test_image_dir = r"C:\Users\jver\Desktop\Training\rgb"
+    test_image_dir = r"C:\Users\jver\Desktop\Validation\rgb"
     
     hyperspectral_path_train = r"C:\Users\jver\Desktop\Training\windows"
     #hyperspectral_path_test = r"C:\Users\jver\Desktop\Test"
@@ -32,8 +31,6 @@ def main():
 
     whole_img_average = True
     image_ids, pixel_averages, labels, HSI_train, split = process_data(train_dataset, train_hyper_imgs, train_pseudo_imgs, train_img_names, train_image_ids, whole_img=whole_img_average)
-    if whole_img_average:
-        split = f"wholeImg_train_{split}"
         
     train_dataframe = create_dataframe(image_ids, labels, pixel_averages, split=f"train_{split}")
     
@@ -53,7 +50,7 @@ def main():
     spectra_plot(mean_data, y_train, type_classifier=f"Train Mean-Centered {split}")
     _, _, train_classifier_mean = PLS_evaluation(mean_data, y_train, type_classifier=f"Train Mean-Centered {split}")
     PLS_show(train_classifier_mean, mean_data, y_train, HSI_train, 21, train_dataset, train_pseudo_imgs, train_img_names, type_classifier=f"Train Mean-Centered {split}")
-    
+
     
     spectra_plot(msc_mean, y_train, type_classifier=f"Train MSC Mean-Centered {split}")
     _ , _ , train_classifier_msc = PLS_evaluation(msc_mean, y_train, type_classifier=f"Train MSC Mean-Centered {split}")

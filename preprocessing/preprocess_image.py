@@ -87,7 +87,6 @@ def spectral_test(img_path):
     array = np.load(img_path)
     
     # Get the original filename of the image, and the corresponding subtracted and multiplied filenames
-    hyp_orig = img_path.split("\\")[-1]
     temp = ("_").join(img_path.split("_")[3:])
     sub = "subtracted_" + temp
     mult = "Multiplied_" + temp
@@ -102,6 +101,10 @@ def spectral_test(img_path):
     temp = -np.log10(array)
     if np.sum(np.isinf(temp)):
         temp[np.isinf(temp)] = 0
+        
+    if np.sum(np.isnan(temp)):
+        temp[np.isnan(temp)] = 0
+        
         
     img_discarded = temp[:, :, 9:213]
     new_img = np.zeros((img_discarded.shape[0], img_discarded.shape[1], int(img_discarded.shape[2] / 2)))

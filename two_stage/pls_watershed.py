@@ -10,10 +10,11 @@ from .output_results import add_2_coco
 
 import numpy as np
 from sklearn.metrics import mean_squared_error
-import pandas as pd
 import matplotlib.pyplot as plt
-from itertools import compress
 import cv2 as cv
+import math
+from tqdm import tqdm
+import json
 
 
 def spectra_plot(X, Y, type_classifier=None):
@@ -25,9 +26,9 @@ def spectra_plot(X, Y, type_classifier=None):
     Y (list): A list of one-hot-encoded labels for each grain in the images.
     type_classifier (str): A string indicating the type of data being plotted (training, validation, or testing).
     """
-
+    
     class_list = ["Rye_Midsummer", "Wheat_H1", "Wheat_H3",  "Wheat_H4",   "Wheat_H5", "Wheat_Halland",  "Wheat_Oland", "Wheat_Spelt"]
-    color = ["red", "darkblue", "green", "yellow", "white", "orange", "cyan", "pink"]
+    color_dict = {"Rye_Midsummer": "red", "Wheat_H1": "darkblue", "Wheat_H3": "green",  "Wheat_H4": "yellow",   "Wheat_H5": "white", "Wheat_Halland": "orange",  "Wheat_Oland": "cyan", "Wheat_Spelt": "pink"}
     
     if type_classifier is None:
         type_classifier = "Original"
@@ -39,7 +40,12 @@ def spectra_plot(X, Y, type_classifier=None):
         for label in range(len(Y)):
 
             # Set the line color based on the grain's class
-            plt.plot(wl, X.loc[label].T, color=list(compress(color, Y.loc[label]))[0], label=list(compress(class_list, Y.loc[label]))[0])
+            if isinstance(Y.iloc[label], str):
+                class_name = class_list[np.argmax( json.loads(Y.iloc[label]) )]
+            else:
+                class_name = class_list[np.argmax( Y.iloc[label] )]
+            plt.plot(wl, X.loc[label].T, color=color_dict[class_name], label=class_name)
+    
     
         # Sort the legend alphabetically by class name
         handles, labels = plt.gca().get_legend_handles_labels()
@@ -47,8 +53,6 @@ def spectra_plot(X, Y, type_classifier=None):
         sorted_labels = sorted(by_label.keys())
         sorted_handles = [by_label[label] for label in sorted_labels]
         
-        import os
-        print(os.getcwd())
         # Plot the legend with sorted class names
         plt.legend(sorted_handles, sorted_labels, loc=3)
         plt.xlabel("Wavelengths (nm)")
@@ -56,7 +60,43 @@ def spectra_plot(X, Y, type_classifier=None):
         plt.title(f"{type_classifier} Data", loc='center')
         plt.savefig(f"two_stage/figures//absorbance_{type_classifier}.png", dpi=400)
         plt.show()
+        
+        
+        
+        
+        
+        
+def calculate_geometric_mean(annotations):
+    """
+    Calculate the geometric mean of the given annotations.
+    
+    Args:
+    annotations : list -  A list of annotation dictionaries.
+    
+    Returns:
+    geometric_mean : float
+        The geometric mean of the given annotations.
+    """
+    total_width = 0
+    total_height = 0
+    num_annotations = 0
+    
+    # Iterate through annotations and accumulate width, height, and count
+    for annotation in annotations:
+        bbox = annotation["bbox"]  # [x, y, width, height]
+        width, height = bbox[2], bbox[3]
+        total_width += width
+        total_height += height
+        num_annotations += 1
+        
+    # Calculate average width and height
+    average_width = total_width / num_annotations
+    average_height = total_height / num_annotations
+    
+    # Calculate geometric mean
+    geometric_mean = math.sqrt(average_width * average_height)
 
+    return geometric_mean
 
 def PLS_evaluation(X, y, classifier=None, type_classifier=None):
     """
@@ -77,8 +117,10 @@ def PLS_evaluation(X, y, classifier=None, type_classifier=None):
         The PLS classifier trained on the input dataframe.
     """
 
+    # Create a list of target variables
     Y = [y[i] for i in range(len(y))]
 
+    # Train the PLS classifier if not provided
     if classifier is None:
         # Train the PLS classifier on the input data
         classifier = PLS(algorithm=2)
@@ -87,6 +129,8 @@ def PLS_evaluation(X, y, classifier=None, type_classifier=None):
     # Compute the RMSE and accuracy for different numbers of components
     RMSE = []
     accuracy = []
+    
+    # Compute RMSE and accuracy for different numbers of components
     for i in range(1, 103):
         y_pred = classifier.predict(X, A=i)
         res = (np.argmax(y_pred, axis=1) == np.argmax(Y, axis=1)).sum()
@@ -156,12 +200,45 @@ def PLS_show(classifier, X, Y, HSI, RMSE, dataset, img_path, img_names, type_cla
     class_list = ["Rye_Midsummer", "Wheat_H1", "Wheat_H3",  "Wheat_H4",   "Wheat_H5", "Wheat_Halland",  "Wheat_Oland", "Wheat_Spelt"]
     color = ["red", "darkblue", "green", "yellow", "white", "orange", "cyan", "pink"]
 
-    for image in range(len(img_names)):
+    filename_to_annotations = {}
+
+    for annotation in dataset["annotations"]:
+        image_id = annotation["image_id"]
+        image_info = next(filter(lambda img: img["id"] == image_id, dataset["images"]))
+        filename = image_info["file_name"]
+    
+        if filename not in filename_to_annotations:
+            filename_to_annotations[filename] = []
+    
+        filename_to_annotations[filename].append(annotation)
+    
+    for image in tqdm(range(len(img_names))):
         spectral_img = HSI[image]
+        img_name = img_names[image]
+    
+        if dataset["images"][image]["file_name"] == img_name:
+            annotations_for_image = filename_to_annotations[img_name]
+            print("")
+            geometric_mean = calculate_geometric_mean(annotations_for_image)
+   
         
-        
+        # Perform thresholding of the image
         rgb_image, img_tres = binarization(img_path[image])
-        labels, markers = watershedd(rgb_image, img_tres, plot=False)
+        
+        
+        # Determine if sparsely or densely-packed image. If over a half of the image-pixels is grain then it is densely
+        if len(img_tres[img_tres==255]) > 1/2 * (img_tres.shape[0]*img_tres.shape[1]):
+            # dense
+            some_scale_factor = 0.4
+        elif len(img_tres[img_tres==255]) <= 1/2 * (img_tres.shape[0]*img_tres.shape[1]):
+            # dense
+            some_scale_factor = 0.5
+            
+        # Adjust the min_distance based on grain_density
+        min_distance = int(round(geometric_mean * some_scale_factor))
+        
+        # Perform watershed segmentation on each of pseudo-RGB image-mask
+        labels, markers = watershedd(rgb_image, img_tres, min_distance)
 
         # Perform watershed segmentation on each of pseudo-RGB image-mask
         #im, img_t = binarization(pseudo_img)
@@ -253,6 +330,6 @@ def PLS_show(classifier, X, Y, HSI, RMSE, dataset, img_path, img_names, type_cla
         plt.savefig(f"two_stage/pls_results/{type_classifier}_{img_names[image]}.png", dpi=400)
         plt.show()
     print(count)  
-    export_json(dict_coco,f"\two_stage/pls_results/PLS_coco_{type_classifier}.json")      
+    export_json(dict_coco,f"two_stage/pls_results/PLS_coco_{type_classifier}.json")      
 
 

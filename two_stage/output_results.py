@@ -44,11 +44,15 @@ def create_dataframe(image_ids, labels, pixel_averages, split):
     return df
 
 
-def add_2_coco(dict_coco,dataset,annotations,pseudo_img,class_id):
+def add_2_coco(dict_coco, dataset, annotations, pseudo_img, class_id):
+    
     for image in dataset["images"]:
+        
         if image["file_name"] in pseudo_img:
             ids = image["id"]
+            
             dimensions = (image["height"],image["width"])
+            
     class_list = [ 1412692,     1412693,   1412694,   1412695,    1412696,     1412697,      1412698,    1412699,     1412700]
     start_x = min(annotations[0::2])
     start_y = min(annotations[1::2])
