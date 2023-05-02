@@ -1,6 +1,6 @@
 
 from numpy_improved_kernel import PLS
-from pls_opti import pixel_average
+from pls_opti import pixel_average, msc_hyp, mean_centering
 from Display_mask import load_coco
 from watershed_2_coco import watershed_2_coco
 from watershed_v2 import preprocess_image, watershedd
@@ -89,7 +89,7 @@ def dataset_prep(dataset,root: str):
         collate_fn=utils.collate_fn) 
     return dataset_test, data_loader_test
 
-def evaluate_model(classifier,dataset):
+def evaluate_model(classifier,dataset,ref):
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
     dataset_test, data_loader_test = dataset_prep(dataset,"I:\\HSI")
     n_threads = torch.get_num_threads()
@@ -102,7 +102,7 @@ def evaluate_model(classifier,dataset):
     for images, targets, img_path in metric_logger.log_every(data_loader_test, 100, header):
         images = list(img for img in images)
         model_time = time.time()
-        outputs = PLS_class(classifier,images,img_path) # get output to evalute on
+        outputs = PLS_class(classifier,images,img_path,ref) # get output to evalute on
         outputs = [{k: v for k, v in t.items()} for t in outputs] 
         model_time = time.time() - model_time
         
@@ -122,7 +122,7 @@ def evaluate_model(classifier,dataset):
     torch.set_num_threads(n_threads)
     return coco_evaluator
 
-def PLS_class(classifier,images,img_path):
+def PLS_class(classifier,images,img_path,ref):
     color = ["red", "darkblue", "green", "yellow", "white", "orange", "cyan", "pink"]
     class_list = ["Rye_Midsummer", "Wheat_H1", "Wheat_H3",  "Wheat_H4",   "Wheat_H5", "Wheat_Halland",  "Wheat_Oland", "Wheat_Spelt"]
     result = []
@@ -154,6 +154,13 @@ def PLS_class(classifier,images,img_path):
             # Compute the pixel average of the spectral image for each grain_mask
             pixel_avg = pixel_average(spectral_img, [mask], None, path.split("\\")[-1])[0]
 
+            # Mean centering
+            pixel_avg = mean_centering(pd.DataFrame(pixel_avg),ref=ref).values
+
+            # MSC mean-center
+            #msc = msc_hyp(pd.DataFrame(pixel_avg),ref=ref)[0]
+            #pixel_avg = mean_centering(msc,ref=ref).values
+            
             # Get prediction for the mask
             result2 = classifier.predict(pixel_avg, A=17)
 
@@ -200,8 +207,11 @@ def coco_2_masked_img(dataset_path):
 
 def main():
     #coco_2_masked_img(r"I:\HSI\COCO_HSI_windowed_val_PLS_eval.json") # uncomment to make PNG images with masks from a COCO json file
-    data = pd.read_csv(r"C:\Users\Corne\Downloads\Pixel_grain_avg_dataframe_train_whole_img.csv")
+    #data = pd.read_csv(r"C:\Users\Corne\Downloads\Pixel_grain_avg_dataframe_train_whole_img.csv")
     #data = pd.read_csv(r"C:\Users\Corne\Downloads\Pixel_grain_avg_dataframe_train_grain.csv")
+    data = pd.read_csv(r"C:\Users\Corne\Downloads\Pixel_grain_avg_dataframe_train_mean_grain.csv")
+    ref = pd.read_csv(r"C:\Users\Corne\Downloads\MSC.csv",header=None)
+    ref = [item for sublist in ref.values for item in sublist]
     data = data.dropna(ignore_index=True)
     X = data.iloc[:,2:]
     y_test = data.label
@@ -210,7 +220,7 @@ def main():
     classifier.fit(X, Y, 102)
     #classifier.predict(X, A=20)
     dataset = Dataset(r'I:\HSI')
-    evaluate_model(classifier,dataset)
+    evaluate_model(classifier,dataset,ref)
 
 
 if __name__ == "__main__":
