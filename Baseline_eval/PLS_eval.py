@@ -101,10 +101,16 @@ def evaluate_model(classifier,dataset):
     header = "Test:"
     for images, targets, img_path in metric_logger.log_every(data_loader_test, 100, header):
         images = list(img for img in images)
+        model_time = time.time()
         outputs = PLS_class(classifier,images,img_path) # get output to evalute on
         outputs = [{k: v for k, v in t.items()} for t in outputs] 
+        model_time = time.time() - model_time
+        
         res = {target["image_id"].item(): output for target, output in zip(targets, outputs)} # add image id for each entry
+        evaluator_time = time.time()
         coco_evaluator.update(res)
+        evaluator_time = time.time() - evaluator_time
+        metric_logger.update(model_time=model_time, evaluator_time=evaluator_time)
 
     metric_logger.synchronize_between_processes()
     print("Averaged stats:", metric_logger)
