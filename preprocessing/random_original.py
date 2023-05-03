@@ -79,14 +79,14 @@ def extract_subwindow(original_img, new_annotation, new_id, window_size, image_i
                     if new_x <= 0:
                         new_x = 0
                     
-                    elif new_x > window_width:
-                        new_x = window_width
+                    elif new_x >= window_width:
+                        new_x = window_width-1
                     
                     if new_y <= 0:
                         new_y = 0
                     
-                    elif new_y > window_height:
-                        new_y = window_height
+                    elif new_y >= window_height:
+                        new_y = window_height-1
 
                     dup_dict[(new_x,new_y)] = 0
                     

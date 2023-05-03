@@ -80,14 +80,14 @@ def extract_subwindow_HSI(original_img, new_annotation, new_id, window_size, img
                     if new_x <= 0:
                         new_x = 0
                     
-                    elif new_x > window_width:
-                        new_x = window_width
+                    elif new_x >= window_width:
+                        new_x = window_width -1 
                     
                     if new_y <= 0:
                         new_y = 0
                     
-                    elif new_y > window_height:
-                        new_y = window_height
+                    elif new_y >= window_height:
+                        new_y = window_height -1
 
                     dup_dict[(new_x,new_y)] = 0
                     
@@ -126,13 +126,13 @@ def extract_subwindow_HSI(original_img, new_annotation, new_id, window_size, img
 if __name__ == "__main__":
 
     #annotation_path = r'C:\Users\Cornelius\Documents\GitHub\Bscproject\Bsc_Thesis_Instance_segmentation\preprocessing\COCO_Test.json'
-    #annotation_path = 'C:/Users/Cornelius/Downloads/DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo/Training/COCO_Training.json'
-    annotation_path = r"C:\Users\jver\Desktop\dtu\DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo\Training\COCO_Training.json"
-    #image_dir = 'C:/Users/Cornelius/Downloads/DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo/Test/images/
-    HSI_image_dir = r"C:\Users\jver\Desktop\Training"
+    annotation_path = 'C:/Users/Corne/Downloads/DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo/Test/COCO_Test_orig.json'
+    #annotation_path = r"C:\Users\jver\Desktop\dtu\DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo\Training\COCO_Training.json"
+    rgb_image_dir = 'C:/Users/Corne/Downloads/DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo/Test/images/'
+    HSI_image_dir = r"I:\HSI\test"
     
     
-    rgb_image_dir = r'C:\Users\jver\Desktop\dtu\DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo\Training\images/'
+    #rgb_image_dir = r'C:\Users\jver\Desktop\dtu\DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo\Training\images/'
     
     
     HSI_new_annotation = empty_dict()
@@ -148,7 +148,7 @@ if __name__ == "__main__":
     class_check_Dense = [0]*8 
     class_check_sparse = [0]*8 
     c = 0
-    n = 1000
+    n = 100
     while (c < n):
         
         image_id = np.random.randint(0, len(dataset["images"]))   ### choose random image
@@ -180,8 +180,8 @@ if __name__ == "__main__":
                     
                     
                 
-                HSI_img = spectral_test(HSI_image_path)
-                
+                #HSI_img = spectral_test(HSI_image_path)
+                HSI_img = np.load(HSI_image_path)
                 image_name = image_name.split(".")[0]
                 
                 HSI_subwindow_size = (256, 256, 102)
@@ -195,7 +195,7 @@ if __name__ == "__main__":
                 
                 rgb_subwindow_size = (256, 256)
                 
-                print(image_name)
+                #print(image_name)
                 rgb_subwindow, rgb_new_annotation = extract_subwindow(img, rgb_new_annotation, c, rgb_subwindow_size, image_id, rgb_image_dir, image_name, dataset, c, plot_mask=False)
                 #print(rgb_new_annotation)
                 #extract_subwindow(original_img, new_annotation, new_id, window_size, img_id, image_dir, dataset, plot_mask=False):
@@ -204,16 +204,16 @@ if __name__ == "__main__":
                 #c = image_id
                 
                 #subwindow = cv.cvtColor(subwindow, cv.COLOR_BGR2RGB)
-                HSI_output_path = r"C:\Users\jver\Desktop\Training\windows/" 
-                np.save(HSI_output_path + f"{c}_window_{image_name}.npy",HSI_subwindow)
+                HSI_output_path = r"I:\HSI\HSI_Test_orig" 
+                np.save(HSI_output_path + "\\"+ f"{c}_window_{image_name}.npy",HSI_subwindow)
                 
-                rgb_output_path = r"C:\Users\jver\Desktop\Training\rgb/" 
-                subwindow = cv.cvtColor(rgb_subwindow, cv.COLOR_RGB2BGR)
-                cv.imwrite(rgb_output_path + f"{c}_window_{image_name}.jpg", subwindow)
+                #rgb_output_path = r"I:\HSI\RGB_Test" 
+                #subwindow = cv.cvtColor(rgb_subwindow, cv.COLOR_RGB2BGR)
+                #cv.imwrite(rgb_output_path + "\\"+ f"{c}_window_{image_name}.jpg", subwindow)
                 #np.save(rgb_output_path + f"window{c}.jpg", rgb_subwindow)
                 
                 c += 1 
-    export_json(HSI_new_annotation,r"C:\Users\jver\Desktop\Training\windows/COCO_HSI_windowed.json")
-    export_json(rgb_new_annotation,r"C:\Users\jver\Desktop\Training\rgb/COCO_rgb_windowed.json")
+    export_json(HSI_new_annotation,r"I:\HSI\test\COCO_HSI_windowed_test.json")
+    #export_json(rgb_new_annotation,r"I:\HSI\test\COCO_rgb_windowed_test_PLS_eval.json")
     
    
