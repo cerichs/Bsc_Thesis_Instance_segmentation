@@ -71,14 +71,19 @@ def process_data(dataset, hyper_imgs, pseudo_imgs, img_names, image_ids, whole_i
             
     ids = []
     X = []
+    X_median = []
     y = []
     
     for images in range(len(g_masks)):
         pixel_avg, label, img_id = pixel_average(HSI[images], g_masks[images], image_ids[images], img_names[images])
+        pixel_medis, label, img_id = pixel_median(HSI[images], g_masks[images], image_ids[images], img_names[images])
         ids.append(img_id)
         X.append(pixel_avg)
+        X_median.append(pixel_medis)
         y.append(label)
-    return ids, X, y, HSI, split
+    return ids, X, X_median, y, HSI, split
+
+
 
 
 def extract_binary_kernel(dataset, pseudo_rgbs_path, img_name):
@@ -121,7 +126,6 @@ def extract_binary_kernel(dataset, pseudo_rgbs_path, img_name):
 
         
         # Generate a binary mask for the annotation
-        print(mini_img.shape)
         for x_x, y_y in zip(x, y):
             
             x_x, y_y = int(x_x), int(y_y)
@@ -180,3 +184,95 @@ def pixel_average(hyperspectral_image, binary_mask, image_id, image_name):
         id_img.append(image_id)
    
     return pixel_averages, one_hot, id_img
+
+
+def pixel_median(hyperspectral_image, binary_mask, image_id, image_name):
+    """
+    Calculate the average pixel values for each binary grain mask in the given hyperspectral image.
+    
+    Parameters:
+    hyperspectral_image (ndarray): A hyperspectral image as a 3D numpy array.
+    binary_mask (list): A list of binary masks for each grain in the image.
+    image_id (int): The ID of the image.
+    image_name (str): The name of the image.
+    
+    Returns:
+    pixel_averages (list): List of average pixel values for each grain mask in the image.
+    one_hot (list): List of one-hot-encoded labels for each grain mask in the image.
+    image_id (int): The ID of the image.
+    """
+    
+    pixel_medians = []
+    class_list = ["Rye_Midsummer", "Wheat_H1", "Wheat_H3",  "Wheat_H4", "Wheat_H5", "Wheat_Halland", "Wheat_Oland", "Wheat_Spelt"]
+    one_hot = []
+    id_img = []
+    
+    # Loop through each binary mask
+    for mask in binary_mask:
+        # Extract the pixel values for each grain mask
+        grains = hyperspectral_image[mask == 255, :] # Only consider pixels with value 255
+        
+        # Calculate the mean spectra-values for each grain mask
+        grain_pixel_median = np.median(grains, axis=0)
+        pixel_medians.append(grain_pixel_median)
+        
+        # Generate one-hot-encoded labels for each grain mask
+        labels = [int(names in image_name) for names in class_list]
+        one_hot.append(labels)
+        
+        # Gain image_id of each mask
+        id_img.append(image_id)
+   
+    return pixel_medians, one_hot, id_img
+
+
+
+
+def extract_specifics(dataframe, grain_class, row_indices=None):
+    """
+    Extracts data from a pandas DataFrame based on a given grain class label and optional row indices.
+
+    Args:
+        dataframe (pandas.DataFrame): DataFrame containing the spectral data and labels.
+        grain_class (str): Grain class label for which to extract data.
+        row_indices (list): Optional list of start and end indices for rows to extract.
+
+    Returns:
+        pandas.DataFrame: DataFrame containing the extracted data.
+
+    Raises:
+        ValueError: If the grain_class argument is not valid.
+
+    """
+    # Define the class labels and corresponding indices
+    class_labels = {
+        "rye": "[1, 0, 0, 0, 0, 0, 0, 0]",
+        "h1": "[0, 1, 0, 0, 0, 0, 0, 0]",
+        "h3": "[0, 0, 1, 0, 0, 0, 0, 0]",
+        "h4": "[0, 0, 0, 1, 0, 0, 0, 0]",
+        "h5": "[0, 0, 0, 0, 1, 0, 0, 0]",
+        "halland": "[0, 0, 0, 0, 0, 1, 0, 0]",
+        "oland": "[0, 0, 0, 0, 0, 0, 1, 0]",
+        "spelt": "[0, 0, 0, 0, 0, 0, 0, 1]"
+    }
+
+    # Check if the given grain_class is valid, if not raise an error
+    if grain_class.lower() not in class_labels:
+        raise ValueError("Invalid grain class label. Valid options are: 'rye', 'h1', 'h3', 'h4', 'h5', 'halland', 'oland', 'spelt'.")
+
+    # Extract the rows that match the given grain_class label
+    result = dataframe.loc[dataframe['label'] == class_labels[grain_class.lower()]].reset_index(drop=True)
+
+    # If row_indices are given, extract only those rows
+    if row_indices:
+        try:
+            result = result.iloc[row_indices[0]:row_indices[1], ]
+        except:
+            raise ValueError("Invalid row indices. Should be a list of start and end indices.")
+
+    return result
+
+
+
+
+

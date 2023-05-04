@@ -10,13 +10,13 @@ from skimage.draw import polygon
 
 
 
-def create_dataframe(image_ids, labels, pixel_averages, split):
+def create_dataframe(mask_ids, labels, pixel_averages, split):
     """
     Create a pandas dataframe containing the average pixel values for each grain mask in the given images,
-    along with the corresponding image IDs and one-hot-encoded labels.
+    along with the corresponding maskIDs and one-hot-encoded labels.
     
     Parameters:
-    image_ids (list): A list of image IDs.
+    maks_ids (list): A list of mask_IDs.
     labels (list): A list of one-hot-encoded labels for each grain mask in the images.
     pixel_averages (list): A list of average pixel values for each grain mask in the images.
     split (str): A string indicating whether the data is for training, validation, or testing.
@@ -25,18 +25,27 @@ def create_dataframe(image_ids, labels, pixel_averages, split):
     df (DataFrame): A pandas dataframe containing the average pixel values for each grain mask in the images,
     along with the corresponding image IDs and one-hot-encoded labels.
     """
-    
-    # Creating dataframe with 103 columns - 1 label and 102 for the channels
-    df = pd.DataFrame(columns=[None]*104)
-    df.columns = ["image_id"] + ["label"] + [f"wl{i}" for i in range(1, 103)]
-    
-    for image in range(len(image_ids)):
-        for mask in range(len(image_ids[image])):
-            # Creating list of length 104 with image_id, one-hot label, and respective 102 pixel-averages
-            temp = [image_ids[image][mask]] + [labels[image][mask]] + pixel_averages[image][mask].tolist()
+    pixel_avg = pixel_averages.copy()
+    if isinstance(pixel_avg, list):
+        # Creating dataframe with 103 columns - 1 label and 102 for the channels
+        df = pd.DataFrame(columns=[None]*104)
+        df.columns = ["image_id"] + ["label"] + [f"wl{i}" for i in range(1, 103)]
         
-            # Appending this to the dataframe
-            df.loc[len(df)] = temp
+        for image in range(len(mask_ids)):
+            for mask in range(len(mask_ids[image])):
+                # Creating list of length 104 with mask_ids, one-hot label, and respective 102 pixel-averages
+                temp = [mask_ids[image][mask]] + [labels[image][mask]] + pixel_avg[image][mask].tolist()
+            
+                # Appending this to the dataframe
+                df.loc[len(df)] = temp
+                
+    elif isinstance(pixel_avg, pd.DataFrame):
+        flattened_ids = [val for sublist in mask_ids for val in sublist]
+        flattened_labels = [val for sublist in labels for val in sublist]
+        pixel_avg.insert(0, 'labels', flattened_labels)
+        pixel_avg.insert(0, 'image_id', flattened_ids)
+        df = pixel_avg
+        df.columns = ["image_id"] + ["label"] + [f"wl{i}" for i in range(1, 103)]
             
     # Saving dataframe for later use
     df.to_csv(f"two_stage/pls_results/Pixel_grain_avg_dataframe_{split}.csv", index=False)

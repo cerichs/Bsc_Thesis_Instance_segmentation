@@ -7,6 +7,7 @@ from .numpy_improved_kernel import PLS
 from .watershed_2_coco import watershed_2_coco, empty_dict, export_json
 from .watershed_v2 import watershedd
 from .output_results import add_2_coco
+from .HSI_mean_msc import mean_centering, msc_hyp
 
 import numpy as np
 from sklearn.metrics import mean_squared_error
@@ -15,6 +16,7 @@ import cv2 as cv
 import math
 from tqdm import tqdm
 import json
+import pandas as pd
 
 
 def spectra_plot(X, Y, type_classifier=None):
@@ -137,32 +139,32 @@ def PLS_evaluation(X, y, classifier=None, type_classifier=None):
         accuracy.append(res / len(Y))
         RMSE.append(np.sqrt(mean_squared_error(Y, y_pred)))
 
-
     # Find the optimal number of components based on the accuracy and RMSE
     optimal_accur = np.argmax(accuracy)
     optimal_RMSE = np.argmin(RMSE)
-
-    # Visualization of results
-    plt.plot(range(1, 103), np.array(RMSE), '-o', c="b", markersize=2)
-    plt.xlabel('Components')
-    plt.ylabel('RMSE')
-    plt.title(f'argmin(RMSE)={optimal_RMSE} for {type_classifier}.png')
-    plt.savefig(f"two_stage/figures/RMSE_{type_classifier}.png", dpi=400)
-    plt.show()
-
-    # Visualization of results
-    plt.plot(range(1, 103), np.array(accuracy), '-o', c="r", markersize=2)
-    plt.xlabel('Components')
-    plt.ylabel('Accuracy')
-    plt.title(f'argmax(accuracy)={optimal_accur} for {type_classifier}')
-    plt.savefig(f"two_stage/figures/Accuracy_{type_classifier}.png", dpi=400)
-    plt.show()
+    
+    if "Test" in type_classifier:
+        # Visualization of results
+        plt.plot(range(1, 103), np.array(RMSE), '-o', c="b", markersize=2)
+        plt.xlabel('Components')
+        plt.ylabel('RMSE')
+        plt.title(f'argmin(RMSE)={optimal_RMSE} for {type_classifier}.png')
+        plt.savefig(f"two_stage/figures/RMSE_{type_classifier}.png", dpi=400)
+        plt.show()
+    
+        # Visualization of results
+        plt.plot(range(1, 103), np.array(accuracy), '-o', c="r", markersize=2)
+        plt.xlabel('Components')
+        plt.ylabel('Accuracy')
+        plt.title(f'argmax(accuracy)={optimal_accur} for {type_classifier}')
+        plt.savefig(f"two_stage/figures/Accuracy_{type_classifier}.png", dpi=400)
+        plt.show()
 
     return optimal_accur, optimal_RMSE, classifier
 
 
 
-def PLS_show(classifier, X, Y, HSI, RMSE, dataset, img_path, img_names, type_classifier=None, train=True):
+def PLS_show(classifier, X, Y, HSI, RMSE, dataset, img_path, img_names, ref=None, variation="Orig", type_classifier=None):
     """
     Function that performs Partial Least Squares (PLS) classification on hyperspectral data and displays the results.
 
@@ -170,7 +172,7 @@ def PLS_show(classifier, X, Y, HSI, RMSE, dataset, img_path, img_names, type_cla
     classifier: PLS classifier object
     X: Feature matrix (hyperspectral data)
     Y: Label vector
-    type_classifier: String indicating the type of classifier (e.g., original, mean-centered, MSC-mean-centered)
+    type_classifier: String indicating the type of classifier, "Orig", "Mean" or "MSC" (i.e., original, mean-centered, MSC-mean-centered)
     pseudo_rgb: List of pseudo-RGB images
     hyper_folder: List of paths to hyperspectral images
     pseudo_name: List of names for the pseudo-RGB images
@@ -189,6 +191,9 @@ def PLS_show(classifier, X, Y, HSI, RMSE, dataset, img_path, img_names, type_cla
     corrected = df_sanity.values[:,2:]
     XXX =[list(i) for i in corrected]
     """
+    
+    assert ref is not None
+    
     
     if type_classifier is None:
         type_classifier = "Original"
@@ -218,7 +223,6 @@ def PLS_show(classifier, X, Y, HSI, RMSE, dataset, img_path, img_names, type_cla
     
         if dataset["images"][image]["file_name"] == img_name:
             annotations_for_image = filename_to_annotations[img_name]
-            print("")
             geometric_mean = calculate_geometric_mean(annotations_for_image)
    
         
@@ -244,10 +248,10 @@ def PLS_show(classifier, X, Y, HSI, RMSE, dataset, img_path, img_names, type_cla
         #im, img_t = binarization(pseudo_img)
         
         "_, markers = watershedd(0, masks[image][binary_mask])"
-
-        plt.figure(dpi=400)
-        plt.imshow(rgb_image)
-        
+        if image < 5:
+            plt.figure(dpi=400)
+            plt.imshow(rgb_image)
+            
         unique_labels = np.unique(markers)
         
         """
@@ -266,69 +270,96 @@ def PLS_show(classifier, X, Y, HSI, RMSE, dataset, img_path, img_names, type_cla
         
         spread = dict.fromkeys(class_list, 0)
         
-        for mask_id in np.add(unique_labels, 300)[1:]: # Offset labels to avoid error if mask_id == 255 from Watershed (happens if there are more than 255 grain-kernels)
-            mask = markers.copy()
-            mask = np.add(mask, 300)
-            mask[mask != mask_id] = 0
-            mask[mask == mask_id] = 255
-
-            # Compute the pixel average of the spectral image for each grain_mask
-            pixel_avg = pixel_average(spectral_img, [mask], None, img_names[image] )[0]
-
-            # Get prediction for the mask
-            result2 = classifier.predict(pixel_avg, A=RMSE)
-
-            # Compute the cropped image for the mask
-            cropped_im = cv.bitwise_and(rgb_image, rgb_image, mask=np.uint8(mask[mask==mask_id]))
-            contours, _ = cv.findContours(np.uint8(mask), cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE) # CHAIN_APPROX_NONE to avoid RLE
-            if (len(np.squeeze(contours))) > 2:
-                # Add the mask to the COCO dataset
-                anno = watershed_2_coco(contours)
-                dict_coco = add_2_coco(dict_coco, dataset, anno, img_names[image], np.argmax(result2))
+        if ref is not None:
+            for mask_id in np.add(unique_labels, 300)[1:]: # Offset labels to avoid error if mask_id == 255 from Watershed (happens if there are more than 255 grain-kernels)
+                mask = markers.copy()
+                mask = np.add(mask, 300)
+                mask[mask != mask_id] = 0
+                mask[mask == mask_id] = 255
     
-                # Update the spread dictionary
-                spread[class_list[np.argmax(result2)]] += 1
-    
-                # Compute the cropped image and overlay on the original image
-                start_x = min(anno[0::2])
-                start_y = min(anno[1::2])
-                end_x = max(anno[0::2])-start_x
-                end_y = max(anno[1::2])-start_y
-    
-                cropped = cropped_im[start_y:start_y+end_y,start_x:start_x+end_x]
+                # Compute the pixel average of the spectral image for each grain_mask
+                pixel_avg = pixel_average(spectral_img, [mask], None, img_names[image] )[0]
+                pixel_avg_df = pd.DataFrame(pixel_avg)
                 
                 
-                x, y = anno[0::2],anno[1::2] # comes in pair of [x,y,x,y,x,y], there split with even and uneven
-                plt.fill(x, y, alpha=.3, color=color[np.argmax(result2)],label = class_list[np.argmax(result2)])
+                avg_list = []
+                if variation == "Mean":
+                    pixel_avg = pixel_avg_df - ref
+                    avg_list = []
+                    
+                    for col, row in pixel_avg.iterrows():
+                        avg_list.append( np.array(row.values) )
+                    pixel_avg = avg_list
+                    
+                elif variation == "MSC":
+                    pixel_msc =  msc_hyp(pixel_avg_df, ref=ref)[0]
+                    pixel_mean = pixel_msc - ref
+                    avg_list = []
+                    for col, row in pixel_mean.iterrows():
+                        avg_list.append( np.array(row.values) )
+                    pixel_avg = avg_list
+                    
+                else:
+                    pass
                 
-                dict_coco = add_2_coco(dict_coco, dataset, anno, img_names[image], np.argmax(result2))
-                spread[class_list[np.argmax(result2)]]+=1
-            #except:
-            #   print("Warning: Skipping object, Watershed gave 1 pixel object") # it sometimes predict 1 pixel instead of polygon
+    
+    
+                # Get prediction for the mask
+                result2 = classifier.predict(pixel_avg, A=RMSE)
+    
+                # Compute the cropped image for the mask
+                cropped_im = cv.bitwise_and(rgb_image, rgb_image, mask=np.uint8(mask[mask==mask_id]))
+                contours, _ = cv.findContours(np.uint8(mask), cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE) # CHAIN_APPROX_NONE to avoid RLE
+                if (len(np.squeeze(contours))) > 2:
+                    # Add the mask to the COCO dataset
+                    anno = watershed_2_coco(contours)
+                    dict_coco = add_2_coco(dict_coco, dataset, anno, img_names[image], np.argmax(result2))
+        
+                    # Update the spread dictionary
+                    spread[class_list[np.argmax(result2)]] += 1
+        
+                    # Compute the cropped image and overlay on the original image
+                    start_x = min(anno[0::2])
+                    start_y = min(anno[1::2])
+                    end_x = max(anno[0::2])-start_x
+                    end_y = max(anno[1::2])-start_y
+        
+                    cropped = cropped_im[start_y:start_y+end_y,start_x:start_x+end_x]
+                    
+                    
+                    x, y = anno[0::2],anno[1::2] # comes in pair of [x,y,x,y,x,y], there split with even and uneven
+                    if image < 5:
+                        plt.fill(x, y, alpha=.3, color=color[np.argmax(result2)],label = class_list[np.argmax(result2)])
+                    
+                    dict_coco = add_2_coco(dict_coco, dataset, anno, img_names[image], np.argmax(result2))
+                    spread[class_list[np.argmax(result2)]]+=1
+                #except:
+                #   print("Warning: Skipping object, Watershed gave 1 pixel object") # it sometimes predict 1 pixel instead of polygon
         dict_coco['images'].append({'id':coco_next_img_id(dict_coco),
                             'file_name': f"{img_names[image]}.jpg",
                             'license':1,
                             'height': rgb_image.shape[0],
                             'width': rgb_image.shape[1]})
-    
-        print(spread)
-        print("_____________")
-        handles, labels = plt.gca().get_legend_handles_labels()
         
-        #res = (np.argmax(result2, axis=1) == np.argmax(Y[image], axis=1)).sum()
-        #accuracy = (res / len(Y[image]))
-        
-        # Sort the legend alphabetically by class name
-        handles, labels = plt.gca().get_legend_handles_labels()
-        by_label = dict(zip(labels, handles))
-        sorted_labels = sorted(by_label.keys())
-        sorted_handles = [by_label[label] for label in sorted_labels]
-        
-        plt.legend(sorted_handles, sorted_labels, loc="center left", bbox_to_anchor =(1,0.5))
-        plt.axis("off")
-        plt.title(f"{img_names[image][:-30]}, {type_classifier}")
-        plt.savefig(f"two_stage/pls_results/{type_classifier}_{img_names[image]}.png", dpi=400)
-        plt.show()
+        if image < 5:
+            print(spread)
+            print("_____________")
+            handles, labels = plt.gca().get_legend_handles_labels()
+            
+            #res = (np.argmax(result2, axis=1) == np.argmax(Y[image], axis=1)).sum()
+            #accuracy = (res / len(Y[image]))
+            
+            # Sort the legend alphabetically by class name
+            handles, labels = plt.gca().get_legend_handles_labels()
+            by_label = dict(zip(labels, handles))
+            sorted_labels = sorted(by_label.keys())
+            sorted_handles = [by_label[label] for label in sorted_labels]
+            
+            plt.legend(sorted_handles, sorted_labels, loc="center left", bbox_to_anchor =(1,0.5))
+            plt.axis("off")
+            plt.title(f"{img_names[image][:-30]}, {type_classifier}")
+            plt.savefig(f"two_stage/pls_results/{type_classifier}_{img_names[image]}.png", dpi=400)
+            plt.show()
     print(count)  
     export_json(dict_coco,f"two_stage/pls_results/PLS_coco_{type_classifier}.json")      
 

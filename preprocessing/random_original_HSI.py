@@ -176,9 +176,9 @@ if __name__ == "__main__":
     class_check = [0]*8 
     class_check_Dense = [0]*8 
     class_check_sparse = [0]*8 
-    c = 1
+    c = 0
     n = 100
-    while (c < n+1):
+    while (c < n):
 
         image_id = np.random.randint(0, len(dataset["images"]))   ### choose random image
         
@@ -231,19 +231,16 @@ if __name__ == "__main__":
                 
                 #c = image_id
                 
-                print(image_name)
                 #subwindow = cv.cvtColor(subwindow, cv.COLOR_BGR2RGB)
-                HSI_output_path = r"C:\Users\jver\Desktop\Validation\windows/" 
-                np.save(HSI_output_path + f"{c}_window_{image_name}.npy",HSI_subwindow)
+                HSI_output_path = r"C:\Users\jver\Desktop\Validation\windows\PLS_eval_img" 
+                np.save(HSI_output_path + "\\" +  f"{c}_window_{image_name}.npy",HSI_subwindow)
                 
-                rgb_output_path = r"C:\Users\jver\Desktop\Validation\rgb/" 
+                
+                rgb_output_path = r"C:\Users\jver\Desktop\Validation\windows\\PLS_eval_img_rgb" 
                 subwindow = cv.cvtColor(rgb_subwindow, cv.COLOR_RGB2BGR)
-                cv.imwrite(rgb_output_path + f"{c}_window_{image_name}.jpg", subwindow)
+                cv.imwrite(rgb_output_path + "\\" + f"{c}_window_{image_name}.jpg", subwindow)
                 #np.save(rgb_output_path + f"window{c}.jpg", rgb_subwindow)
                 c += 1
-                print(c)
-        else:
-            continue
     export_json(HSI_new_annotation,r"C:\Users\jver\Desktop\Validation\windows/COCO_HSI_windowed.json")
     export_json(rgb_new_annotation,r"C:\Users\jver\Desktop\Validation\rgb/COCO_rgb_windowed.json")
     
