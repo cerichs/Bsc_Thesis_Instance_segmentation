@@ -1,4 +1,4 @@
-from .Display_mask import load_coco, load_annotation, find_image
+from Display_mask import load_coco, load_annotation, find_image
 
 import numpy as np
 import cv2 as cv

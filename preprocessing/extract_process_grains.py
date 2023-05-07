@@ -48,6 +48,8 @@ def find_imgs(dataset, hyp_folder, pseudo_folder):
             ids.append(image_id)
         else:
             continue
+        
+    # ONLY use on subwindows
     hyper_path = sorted(np.unique(hyper_path), key=get_window_number)
     
     return hyper_path, pseudo_rgbs, img_name, ids

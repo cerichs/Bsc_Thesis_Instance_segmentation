@@ -135,7 +135,11 @@ def PLS_evaluation(X, y, classifier=None, type_classifier=None):
     # Compute RMSE and accuracy for different numbers of components
     for i in range(1, 103):
         y_pred = classifier.predict(X, A=i)
-        res = (np.argmax(y_pred, axis=1) == np.argmax(Y, axis=1)).sum()
+        try:
+            res = (np.argmax(y_pred, axis=1) == np.argmax(Y, axis=1)).sum()
+        except:
+            Y = [[y[i]] for i in range(len(y))]
+            res = (np.argmax(y_pred, axis=1) == np.argmax(Y, axis=1)).sum()
         accuracy.append(res / len(Y))
         RMSE.append(np.sqrt(mean_squared_error(Y, y_pred)))
 

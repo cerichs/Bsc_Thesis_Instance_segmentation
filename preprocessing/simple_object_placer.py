@@ -1,11 +1,13 @@
 import numpy as np
 import cv2 as cv
+import os
 import sys
 
 sys.path.append("..")
 
-from .Display_mask import load_coco, load_annotation, find_image, draw_img
-from .crop_from_mask import crop_from_mask, fill_mask,overlay_on_larger_image
+from Display_mask import load_coco, load_annotation, find_image, draw_img
+from crop_from_mask import crop_from_mask, fill_mask,overlay_on_larger_image
+from preprocess_image import spectral_test, binarization
 from two_stage.watershed_2_coco import empty_dict, export_json
 
 
@@ -141,68 +143,140 @@ def coco_new_bbox(x,y,dataset,image_id,annotation_numb):
     return [x,y,width,height]
 
 if __name__=="__main__":
+    # Path to the annotation file
     #annotation_path = r'C:\Users\Cornelius\Documents\GitHub\Bscproject\Bsc_Thesis_Instance_segmentation\preprocessing\COCO_Test.json'
-    annotation_path = 'C:/Users/Cornelius/Downloads/DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo/Test/COCO_Test.json'
+    annotation_path = r'C:\Users\jver\Desktop\dtu\DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo\Training\COCO_Training.json'
+    
+    # Path to the image directory
     #image_dir = 'C:/Users/Cornelius/Documents/GitHub/Bscproject/Bsc_Thesis_Instance_segmentation/preprocessing/'
-    image_dir = 'C:/Users/Cornelius/Downloads/DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo/Test/images/'
+    image_dir = r'C:\Users\jver\Desktop\dtu\DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo\Training\images/'
+    # Path to the HSI image directory
+    HSI_image_dir = r"C:\Users\jver\Desktop\Training/"
+    
+    # Load the COCO dataset
     dataset = load_coco(annotation_path)
+    
+    # Create an empty COCO-like dictionary
     dict_coco = empty_dict()
-    dict_coco['categories']=dataset['categories']
-    dict_coco['info']=dataset['info']
-    dict_coco['licenses']=dataset['licenses']
-    class_list = [ 1412692,     1412693,   1412694,   1412695,    1412696,     1412697,      1412698,    1412699,     1412700]
-    #           [Rye_midsummer, Wheat_H1, Wheat_H3,  Wheat_H4,   Wheat_H5, Wheat_Halland,  Wheat_Oland, Wheat_Spelt, Foreign]
-                
-    for c in range(200):
-        background = np.zeros((256,256,3),dtype = np.uint8)
+    
+    # Copy the categories, info, and licenses from the original dataset
+    dict_coco['categories'] = dataset['categories']
+    dict_coco['info'] = dataset['info']
+    dict_coco['licenses'] = dataset['licenses']
+    
+    # Define the list of class IDs
+    class_list = [1412692, 1412693, 1412694, 1412695, 1412696, 1412697, 1412698, 1412699, 1412700]
+    #              [Rye_midsummer, Wheat_H1, Wheat_H3, Wheat_H4, Wheat_H5, Wheat_Halland, Wheat_Oland, Wheat_Spelt, Foreign]
+    
+    for c in range(5):
+        # Create a background image
+        background = np.zeros((256, 256, 3), dtype=np.uint8)
+        background_hsi = np.zeros((256, 256, 102), dtype=np.float64)
         background = cv.cvtColor(background, cv.COLOR_BGR2RGB)
-        max_tries=200 # amount of kernel to randomly sample and try to place
-        class_check= [0]*8
-        j=0
-        while(j<max_tries):
-            annotation_numb = np.random.randint(0,len(dataset['annotations']))
+        
+        max_tries = 200  # Amount of kernels to randomly sample and try to place
+        class_check = [0] * 8
+        j = 0
+        while j < max_tries:
+            # Randomly select an annotation
+            annotation_numb = np.random.randint(0, len(dataset['annotations']))
             
+            # Find the image name and ID for the selected annotation
             image_name, image_id = find_image(dataset, annotation_numb)
-            bbox, annotation = load_annotation(dataset, annotation_numb, image_id)
-            cropped_im = fill_mask(dataset,image_id, annotation, image_name,image_dir)
-            height, width = cropped_im.shape[0], cropped_im.shape[1]
-            cropped = crop_from_mask(dataset, annotation_numb, cropped_im)
-            x, y, keep = find_x_y(background, cropped,annotation, height,width)
             
-            #Specifying the max of each kernel type to be generated:
+            # Load the annotation and bbox for the selected annotation
+            bbox, annotation = load_annotation(dataset, annotation_numb, image_id)
+            
+            # Fill the mask to get the cropped image
+            cropped_im = fill_mask(dataset, image_id, annotation, image_name, image_dir)
+            height, width = cropped_im.shape[0], cropped_im.shape[1]
+            
+            # Crop the image based on the mask
+            cropped = crop_from_mask(dataset, annotation_numb, cropped_im)
+            
+            # Find the position to place the cropped image on the background
+            x, y, keep = find_x_y(background, cropped, annotation, height, width)
+            
+            # Specify the maximum number of each kernel type to be generated
             max_numb = 8
-            if keep and (dataset['annotations'][annotation_numb]['category_id']!=1412700) and (class_check[class_list.index(dataset['annotations'][annotation_numb]['category_id'])] < max_numb):
-                background = overlay_on_larger_image(background,cropped,x,y)
-                dict_coco['annotations'].append({'id':coco_next_anno_id(dict_coco),
-                                      'image_id':coco_next_img_id(dict_coco),
-                                      'segmentation': [coco_new_anno_coords(dataset,image_id,annotation_numb,x,y)],
-                                      'iscrowd':0,
-                                      'bbox': coco_new_bbox(x,y,dataset,image_id,annotation_numb), #mangler x,y
-                                      'area':dataset['annotations'][annotation_numb]['area'],
-                                      'category_id':dataset['annotations'][annotation_numb]['category_id']
-                                      })
+            if keep and (dataset['annotations'][annotation_numb]['category_id'] != 1412700) and (class_check[class_list.index(dataset['annotations'][annotation_numb]['category_id'])] < max_numb):
+                # Overlay the cropped image on the background
+                background = overlay_on_larger_image(background, cropped, x, y)
+                
+                # Load the HSI image
+                HSI_image_path = os.path.join(HSI_image_dir, image_name)
+                if not HSI_image_path.endswith(".npy"):
+                    HSI_image_path = HSI_image_path[:-3]+"npy"
+               
+                # Load the HSI image and resize it
+                HSI_img = spectral_test(HSI_image_path)
+                resized_hsi = cv.resize(HSI_img, (cropped.shape[1], cropped.shape[0]))
+                
+                # Extract the grains from the resized HSI image using the cropped mask
+                grains = cv.bitwise_and(resized_hsi, resized_hsi, mask=np.uint8(cropped[:, :, 0]))
+                
+                # Create a temporary array to hold the updated HSI values
+                temp = np.zeros((grains.shape[0], grains.shape[1], 102), dtype=np.float64)
+                temp = temp.astype(grains.dtype)
+                temp = background_hsi[y:y+grains.shape[0], x:x+grains.shape[1]]  # Selecting a window of the image to edit
+                temp[grains > 0] = 0  # All the places where the object is, is set to 0. Where the mask is 0, does remains unchanged from the larger_image
+                temp = np.add(temp, grains * (grains > 0), out=temp, casting="unsafe")
+                background_hsi = background_hsi.astype(grains.dtype)
+                background_hsi[y:y+grains.shape[0], x:x+grains.shape[1]] = temp
+                
+                # Append the annotation information to the COCO-like dictionary
+                dict_coco['annotations'].append({
+                    'id': coco_next_anno_id(dict_coco),
+                    'image_id': coco_next_img_id(dict_coco),
+                    'segmentation': [coco_new_anno_coords(dataset, image_id, annotation_numb, x, y)],
+                    'iscrowd': 0,
+                    'bbox': coco_new_bbox(x, y, dataset, image_id, annotation_numb),
+                    'area': dataset['annotations'][annotation_numb]['area'],
+                    'category_id': dataset['annotations'][annotation_numb]['category_id']
+                })
+                
+                # Increment the class count
                 class_check[class_list.index(dataset['annotations'][annotation_numb]['category_id'])] += 1
             else:
                 pass
-            j+=1
-        print(class_check)
-        background= cv.cvtColor(background, cv.COLOR_BGR2RGB)
-        cv.imwrite(f"images/Synthetic_{c}.jpg",background)
-        dict_coco['images'].append({'id':c+1,
-                                    'file_name': f"Synthetic_{c}.jpg",
-                                    'license':1,
-                                    'height':background.shape[0],
-                                    'width':background.shape[1]})
-    export_json(dict_coco,"COCO_balanced_1k_val.json")
+            j += 1
+        
+        # Save the background image
+        background = cv.cvtColor(background, cv.COLOR_BGR2RGB)
+        cv.imwrite(f"images/Synthetic_{c}.jpg", background)
+        
+        # Display the background image
+        import matplotlib.pyplot as plt
+        plt.imshow(background)
+        plt.show()
+        
+        # Save the background HSI image
+        np.save(f"images/Synthetic_{c}.npy", background_hsi)
+        
+        # Display the background HSI image
+        plt.imshow(background_hsi[:, :, 0])
+        plt.show()
+        
+        # Append the image information to the COCO-like dictionary
+        dict_coco['images'].append({
+            'id': c + 1,
+            'file_name': f"Synthetic_{c}.jpg",
+            'license': 1,
+            'height': background.shape[0],
+            'width': background.shape[1]
+        })
     
+    # Export the COCO-like dictionary as a JSON file
+    export_json(dict_coco, "COCO_balanced_1k_val.json")
+    
+    # Plot the masks and analyze the grain types
     plot_mask = False
     if plot_mask:
-        ### Extracting name of the particular grain-type and counting instances in image
         for new_id in range(1, 11):
             ground_truth = 0
             name = []
             for annotations in dict_coco["annotations"]:
-                if annotations["image_id"]==new_id:
+                if annotations["image_id"] == new_id:
                     ground_truth += 1
                     for categories in dict_coco["categories"]:
                         if categories["id"] == annotations["category_id"]:

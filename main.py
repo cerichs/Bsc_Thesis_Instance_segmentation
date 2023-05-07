@@ -38,7 +38,7 @@ def load_data(paths):
 
 
 
-def train_PLS_classifier(train_dataset, paths, whole_img_average=False):
+def train_PLS_classifier(train_dataset, paths, whole_img_average=True):
     """
     Train PLS classifiers using different data preprocessing methods.
 
@@ -64,7 +64,6 @@ def train_PLS_classifier(train_dataset, paths, whole_img_average=False):
     # Prepare data for training
     X_train = train_dataframe.iloc[:,2:]
     y_train = train_dataframe.label
-    
     #X_train = train_dataframe_median.iloc[:,2:]
     #y_train = train_dataframe_median.label
     
@@ -105,7 +104,7 @@ def train_PLS_classifier(train_dataset, paths, whole_img_average=False):
     }
 
 
-def test_PLS_classifier(test_dataset, paths, classifiers, refs, whole_img_average=False):
+def test_PLS_classifier(test_dataset, paths, classifiers, refs, whole_img_average=True):
     """
     Test PLS classifiers using different data preprocessing methods.
 
