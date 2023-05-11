@@ -37,9 +37,9 @@ def crop_from_mask(dataset,annotation_numb,cropped_im):
 
     return cropped
 
-def fill_mask(dataset,image_id,annotation,image_name,image_path):
+def fill_mask(dataset,image_id,annotation,image_name,image_path,HSI_path = "",ch=3):
     """ Takes the segmentations from COCO dataset and discards the background 
-    (ie. the region that is not withing interest)
+    (ie. the region that is not within interest)
 
     Parameters
     ----------
@@ -69,11 +69,18 @@ def fill_mask(dataset,image_id,annotation,image_name,image_path):
 
     row, col = polygon(y, x, img.shape)
     img[row,col] = 1
-    PATH = image_path+image_name
-    orig_im = cv.imread(PATH)
-    orig_im = cv.cvtColor(orig_im, cv.COLOR_BGR2RGB)
-    orig_im = np.uint8(orig_im)
-    cropped_im = cv.bitwise_and(orig_im, orig_im, mask=np.uint8(img))
+    
+    if ch != 3:
+        masks = np.repeat(img[..., np.newaxis], 102, axis=-1)
+        PATH = image_path+image_name[:-3] + "npy"
+        orig_im = np.load(PATH)
+        cropped_im = np.multiply(orig_im, np.uint8(masks)) 
+    else:
+        PATH = image_path+image_name
+        orig_im = cv.imread(PATH)
+        orig_im = cv.cvtColor(orig_im, cv.COLOR_BGR2RGB)
+        orig_im = np.uint8(orig_im)
+        cropped_im = cv.bitwise_and(orig_im, orig_im, mask=np.uint8(img))
     return cropped_im
 
 def overlay_on_larger_image(larger_image,smaller_image,x=None,y=None):
@@ -102,8 +109,9 @@ def overlay_on_larger_image(larger_image,smaller_image,x=None,y=None):
         y = np.random.randint(0,(larger_image.shape[0]-smaller_image.shape[0]))
     temp = larger_image[y:y+smaller_image.shape[0], x:x+smaller_image.shape[1]] # Selecting a window of the image to edit
     temp[smaller_image>0] = 0 # All the places where the object is, is set to 0. Where the mask is 0, does remains unchanged from the larger_image
-    temp += smaller_image * (smaller_image > 0) #the object is added to the blackened image
-    larger_image[y:y+smaller_image.shape[0], x:x+smaller_image.shape[1]] = temp # The window is put back into larger_image
+    temp = np.add(temp,smaller_image * (smaller_image > 0)) #the object is added to the blackened image
+    for i in range(temp.shape[2]):
+        larger_image[y:y+smaller_image.shape[0], x:x+smaller_image.shape[1],i] = temp[:,:,i] # The window is put back into larger_image
     return larger_image
 
 imported = True

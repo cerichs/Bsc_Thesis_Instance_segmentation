@@ -78,31 +78,20 @@ def coco_new_bbox(x,y,dataset,image_id,annotation_numb):
     height = max(annote[1::2])-min(annote[1::2])
     return [x,y,width,height]
 
-if __name__=="__main__":
-    #annotation_path = r'C:\Users\Cornelius\Documents\GitHub\Bscproject\Bsc_Thesis_Instance_segmentation\preprocessing\COCO_Test.json'
-    annotation_path = 'C:/Users/Cornelius/Downloads/DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo/Test/COCO_Test.json'
-    #image_dir = 'C:/Users/Cornelius/Documents/GitHub/Bscproject/Bsc_Thesis_Instance_segmentation/preprocessing/'
-    image_dir = 'C:/Users/Cornelius/Downloads/DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo/Test/images/'
-    dataset = load_coco(annotation_path)
-    dict_coco = empty_dict()
-    dict_coco['categories']=dataset['categories']
-    dict_coco['info']=dataset['info']
-    dict_coco['licenses']=dataset['licenses']
-    class_list = [ 1412692,     1412693,   1412694,   1412695,    1412696,     1412697,      1412698,    1412699,     1412700]
-    #           [Rye_midsummer, Wheat_H1, Wheat_H3,  Wheat_H4,   Wheat_H5, Wheat_Halland,  Wheat_Oland, Wheat_Spelt, Foreign]
-                
-    for c in range(200):
-        background = np.zeros((256,256,3),dtype = np.uint8)
-        background = cv.cvtColor(background, cv.COLOR_BGR2RGB)
+def create_synth_img(image_dir, save_dir, class_list, dataset, dict_coco, ch=3, n=200, plot_mask = False):
+    for c in range(n):
+        background = np.zeros((256,256,ch),dtype = np.float64)
+        if ch == 3:
+            background = np.zeros((256,256,ch),dtype = np.uint8)
+            background = cv.cvtColor(background, cv.COLOR_BGR2RGB)
         max_tries=200 # amount of kernel to randomly sample and try to place
         class_check= [0]*8
         j=0
         while(j<max_tries):
             annotation_numb = np.random.randint(0,len(dataset['annotations']))
-            
             image_name, image_id = find_image(dataset, annotation_numb)
             bbox, annotation = load_annotation(dataset, annotation_numb, image_id)
-            cropped_im = fill_mask(dataset,image_id, annotation, image_name,image_dir)
+            cropped_im = fill_mask(dataset,image_id, annotation, image_name,image_dir, ch = ch)
             height, width = cropped_im.shape[0], cropped_im.shape[1]
             cropped = crop_from_mask(dataset, annotation_numb, cropped_im)
             x, y, keep = find_x_y(background, cropped,annotation, height,width)
@@ -123,9 +112,12 @@ if __name__=="__main__":
             else:
                 pass
             j+=1
-        print(class_check)
-        background= cv.cvtColor(background, cv.COLOR_BGR2RGB)
-        cv.imwrite(f"images/Synthetic_{c}.jpg",background)
+        #print(class_check)
+        if ch == 3:
+            background= cv.cvtColor(background, cv.COLOR_BGR2RGB)
+            cv.imwrite(save_dir + f"\\Synthetic_{c}.jpg",background)
+        else:
+            np.save(save_dir + f"\\Synthetic_{c}.npy",background)
         dict_coco['images'].append({'id':c+1,
                                     'file_name': f"Synthetic_{c}.jpg",
                                     'license':1,
@@ -169,6 +161,24 @@ if __name__=="__main__":
             
             image_dir2 = r"C:\Users\admin\Desktop\bachelor\Bsc_Thesis_Instance_segmentation\preprocessing\images/"
             draw_img(dict_coco, new_id, annote_ids, image_dir2)
+
+if __name__=="__main__":
+    #annotation_path = r'C:\Users\Cornelius\Documents\GitHub\Bscproject\Bsc_Thesis_Instance_segmentation\preprocessing\COCO_Test.json'
+    annotation_path = 'C:/Users/Corne/Downloads/DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo/Test/COCO_Test.json'
+    #image_dir = 'C:/Users/Cornelius/Documents/GitHub/Bscproject/Bsc_Thesis_Instance_segmentation/preprocessing/'
+    #image_dir = 'C:/Users/Corne/Downloads/DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo/Test/images/'
+    image_dir = 'I:/HSI/test/'
+    save_dir = r'C:\Users\Corne\Documents\GitHub\Bsc_Thesis_Instance_segmentation\preprocessing\images'
+    dataset = load_coco(annotation_path)
+    dict_coco = empty_dict()
+    dict_coco['categories']=dataset['categories']
+    dict_coco['info']=dataset['info']
+    dict_coco['licenses']=dataset['licenses']
+    class_list = [ 1412692,     1412693,   1412694,   1412695,    1412696,     1412697,      1412698,    1412699,     1412700]
+    #           [Rye_midsummer, Wheat_H1, Wheat_H3,  Wheat_H4,   Wheat_H5, Wheat_Halland,  Wheat_Oland, Wheat_Spelt, Foreign]
+    create_synth_img(image_dir, save_dir, class_list, dataset, dict_coco, ch=102, n=1, plot_mask = False)
+                
+    
 # =============================================================================
 # ov = np.zeros((300, 300))
 # new_obj = np.zeros((300, 300))
