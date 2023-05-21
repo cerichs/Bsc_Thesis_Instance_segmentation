@@ -1,6 +1,7 @@
 # Bachelor Thesis, Instance segmentation with FOSS
 
 This repository contains the code used in the bachelor thesis. <br>
+The code contains Two-Stage approach consisting of Watershed and PLS-DA. As well as Yolov5 on hyperspectral images and Pseudo-RGB. <br>
 Made by:<br>
 Cornelius Erichs, Artificial Intelligence and Data (B.Sc.), Technical University of Denmark (DTU)<br>
 Johan Verrecchia, Artificial Intelligence and Data (B.Sc.), Technical University of Denmark (DTU)<br>
