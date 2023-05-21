@@ -1,9 +1,9 @@
 # Bachelor Thesis, Instance segmentation with FOSS
 
-This repository contains the code used in the bachelor thesis. 
-Made by:
-Cornelius Erichs, Artificial Intelligence and Data (B.Sc.), Technical University of Denmark (DTU)
-Johan Verrecchia, Artificial Intelligence and Data (B.Sc.), Technical University of Denmark (DTU)
+This repository contains the code used in the bachelor thesis. <br>
+Made by:<br>
+Cornelius Erichs, Artificial Intelligence and Data (B.Sc.), Technical University of Denmark (DTU)<br>
+Johan Verrecchia, Artificial Intelligence and Data (B.Sc.), Technical University of Denmark (DTU)<br>
 
 ## <div align="center">Dataset download</div>
 The Pseudo-RGB dataset can be downloaded [HERE](https://github.com/cerichs/Bsc_Thesis_Instance_segmentation/releases/download/Release/PseudoRGB.zip) the HSI dataset can be downloaded [HERE](https://sid.erda.dk/share_redirect/e4Wr5LFI4L). Due to the size limitations on GitHub, we are unable to upload the version of the HSI dataset that only contains the annotated images, the full dataset will therefore have to be downloaded.
@@ -55,7 +55,7 @@ python segment/val.py --weights /PATH/TO/BEST/WEIGHT/best.pt --data grainSpectra
 python segment/predict.py --weights /PATH/TO/BEST/WEIGHT/best.pt --img 256 --conf 0.45 --source /PATH/TO/FOLDER/WITH/IMAGES/TO/PREDICT --hide-label --hide-conf --line-thickness 1
 ```
 
-Running the HSI training will command with errors as it is unable to plot HSI data, this does not affect the training and can be ignored.
+Running the HSI training will give errors as it is unable to plot HSI data, this does not affect the training and can be ignored.
 
 ## <div align="center">Convert COCO to YOLO</div>
 The convert a .json file in COCO format, we recommend using the script by Ultralytics, which has been modified to fit our classes. Can be accesed [Here](https://github.com/cerichs/Bsc_Thesis_Instance_segmentation/blob/optimize/YOLO/JSON2YOLO-master/general_json2yolo.py). 
