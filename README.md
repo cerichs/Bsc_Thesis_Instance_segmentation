@@ -33,7 +33,7 @@ The changes made to run on HSI are in the 5 files mentioned above, all the rest 
 
 To run YOLO either follow the documentation from Ultralytics in [README.md](https://github.com/cerichs/Bsc_Thesis_Instance_segmentation/blob/optimize/YOLO/README.md) or use the command line below:
 
-(Assuming the terminal current directory is the YOLO folder)
+(Assuming the terminal current directory is the YOLO folder, requirements.txt have been installed in your virtual environment)
 
 ```command
 python segment/train.py --img 256 --batch-size 32 --epochs 400 --data grain256_april.yaml --weights '' --cfg /work3/coer/Bachelor/yolov5/models/segment/yolov5xn-seg.yaml --cache
@@ -47,9 +47,11 @@ python segment/val.py --weights /PATH/TO/BEST/WEIGHT/best.pt --data grainSpectra
 python segment/predict.py --weights /PATH/TO/BEST/WEIGHT/best.pt --img 256 --conf 0.45 --source /PATH/TO/FOLDER/WITH/IMAGES/TO/PREDICT --hide-label --hide-conf --line-thickness 1
 ```
 
+## <div align="center">Convert COCO to YOLO</div>
 The convert a .json file in COCO format, we recommend using the script by Ultralytics, which has been modified to fit our classes. Can be accesed [Here](https://github.com/cerichs/Bsc_Thesis_Instance_segmentation/blob/optimize/YOLO/JSON2YOLO-master/general_json2yolo.py). 
 
-Currently it convers the COCO json file to Classification to convert to Binary classification the following codesnippet has to be changed (line 48-52)
+Currently it converts the COCO json file to Classification to convert to Binary classification the following [codesnippet](https://github.com/cerichs/Bsc_Thesis_Instance_segmentation/blob/99147cf4bc32efdf3554be6aaebd2a6cac800488/YOLO/JSON2YOLO-master/general_json2yolo.py#LL48C17-L52C43) has to be changed (line 48-52)
+
 
 ```python
 class_list = [ 1412692,     1412693,   1412694,   1412695,    1412696,     1412697,      1412698,    1412699,     1412700]
