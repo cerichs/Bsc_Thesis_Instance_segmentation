@@ -98,3 +98,8 @@ Prediction: [submit-predict.sh](https://github.com/cerichs/Bsc_Thesis_Instance_s
 ```command
 bsub < submit-predict.sh
 ```
+
+Training (HSI): [submit-HSI.sh](https://github.com/cerichs/Bsc_Thesis_Instance_segmentation/blob/optimize/YOLO/submit-HSI.sh) **Important** It is only possible to train on HSI using the Nvidia A100 (gpua100) when using synthetic data (for some reason).
+```command
+bsub < submit-HSI.sh
+```
