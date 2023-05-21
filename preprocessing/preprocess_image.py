@@ -35,7 +35,7 @@ def binarization(img_name, plot=False):
         plt.figure(frameon=False, dpi=100)
         plt.imshow(grayscale, cmap="gray")
         plt.axis('off')
-        plt.savefig("image.png")
+        #plt.savefig("image.png")
         plt.show()
         
         
@@ -43,7 +43,7 @@ def binarization(img_name, plot=False):
         plt.figure(frameon=False, dpi=100)
         plt.imshow(grayscale, cmap="gray")
         plt.axis('off')
-        plt.savefig("two_stage/figures/gray_image.png")
+        #plt.savefig("two_stage/figures/gray_image.png")
         plt.show()
         
         ## Grayscale histogram and Otsu threshold
@@ -57,14 +57,14 @@ def binarization(img_name, plot=False):
         plt.legend(["Otsu's Threshold"])
         #plotting the histogram
         sns.histplot(image_g.ravel(), binrange=(0,1), bins=100)
-        plt.savefig("two_stage/figures/histogram.png",dpi=200)
+        #plt.savefig("two_stage/figures/histogram.png",dpi=200)
         plt.show()
         
         ## Plotting the binary image
         plt.figure(frameon=False, dpi=100)
         plt.imshow(img_t, cmap="gray")
         plt.axis('off')
-        plt.savefig("two_stage/figures/otsu.png")
+        #plt.savefig("two_stage/figures/otsu.png")
         plt.show()
     
     return im, img_t

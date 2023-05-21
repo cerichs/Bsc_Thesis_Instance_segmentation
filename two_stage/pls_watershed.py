@@ -10,13 +10,14 @@ from .output_results import add_2_coco
 from .HSI_mean_msc import mean_centering, msc_hyp
 
 import numpy as np
-from sklearn.metrics import mean_squared_error
+from sklearn.metrics import mean_squared_error, confusion_matrix, ConfusionMatrixDisplay
 import matplotlib.pyplot as plt
 import cv2 as cv
 import math
 from tqdm import tqdm
 import json
 import pandas as pd
+import seaborn as sns
 
 
 def spectra_plot(X, Y, type_classifier=None):
@@ -36,7 +37,8 @@ def spectra_plot(X, Y, type_classifier=None):
         type_classifier = "Original"
     
     # Create an array of wavelengths for the x-axis
-    wl = np.arange(900, 1700, (1700-900)/102)
+    #wl = np.arange(900, 1700, (1700-900)/224)
+    wl = np.arange(943, 1657, (1657-943)/102)
     # Plot each image's/grain's spectral curve
     with plt.style.context('ggplot'):
         for label in range(len(Y)):
@@ -56,7 +58,7 @@ def spectra_plot(X, Y, type_classifier=None):
         sorted_handles = [by_label[label] for label in sorted_labels]
         
         # Plot the legend with sorted class names
-        plt.legend(sorted_handles, sorted_labels, loc=3)
+        plt.legend(sorted_handles, sorted_labels, loc=2)
         plt.xlabel("Wavelengths (nm)")
         plt.ylabel("Absorbance")
         plt.title(f"{type_classifier} Data", loc='center')
@@ -120,7 +122,7 @@ def PLS_evaluation(X, y, classifier=None, type_classifier=None):
     """
 
     # Create a list of target variables
-    Y = [y[i] for i in range(len(y))]
+    Y =  [y[i] if type(y[i])!=str else json.loads(y[i]) for i in range(len(y))]
 
     # Train the PLS classifier if not provided
     if classifier is None:
@@ -132,6 +134,7 @@ def PLS_evaluation(X, y, classifier=None, type_classifier=None):
     RMSE = []
     accuracy = []
     
+    
     # Compute RMSE and accuracy for different numbers of components
     for i in range(1, 103):
         y_pred = classifier.predict(X, A=i)
@@ -140,19 +143,34 @@ def PLS_evaluation(X, y, classifier=None, type_classifier=None):
         except:
             Y = [[y[i]] for i in range(len(y))]
             res = (np.argmax(y_pred, axis=1) == np.argmax(Y, axis=1)).sum()
+        
+            
+        
         accuracy.append(res / len(Y))
         RMSE.append(np.sqrt(mean_squared_error(Y, y_pred)))
 
     # Find the optimal number of components based on the accuracy and RMSE
+    print(f"accuracy: {accuracy}")
+    print("")
+    print(f"RMSE: {RMSE}")
+    with open(f"RMSE_{type_classifier}.txt", "w") as output:
+        for i in RMSE:
+            i = round(i, 4)
+            output.write(str(i) + "\n")
+    with open(f"accuracy_{type_classifier}.txt", "w") as output:
+        for i in accuracy:
+            i = round(i, 4)
+            output.write(str(i) + "\n")
+        
     optimal_accur = np.argmax(accuracy)
     optimal_RMSE = np.argmin(RMSE)
     
-    if "Test" in type_classifier:
+    if "test" in type_classifier or "Validation" in type_classifier:
         # Visualization of results
         plt.plot(range(1, 103), np.array(RMSE), '-o', c="b", markersize=2)
         plt.xlabel('Components')
         plt.ylabel('RMSE')
-        plt.title(f'argmin(RMSE)={optimal_RMSE} for {type_classifier}.png')
+        plt.title(f'argmin(RMSE)={optimal_RMSE+1} for {type_classifier}.png')
         plt.savefig(f"two_stage/figures/RMSE_{type_classifier}.png", dpi=400)
         plt.show()
     
@@ -160,8 +178,37 @@ def PLS_evaluation(X, y, classifier=None, type_classifier=None):
         plt.plot(range(1, 103), np.array(accuracy), '-o', c="r", markersize=2)
         plt.xlabel('Components')
         plt.ylabel('Accuracy')
-        plt.title(f'argmax(accuracy)={optimal_accur} for {type_classifier}')
+        plt.title(f'argmax(accuracy)={optimal_accur+1} for {type_classifier}')
         plt.savefig(f"two_stage/figures/Accuracy_{type_classifier}.png", dpi=400)
+        plt.show()
+        
+            
+        
+        y_pred = classifier.predict(X, A=28)
+        class_list = ["Rye_Midsummer", "Wheat_H1", "Wheat_H3",  "Wheat_H4",   "Wheat_H5", "Wheat_Halland",  "Wheat_Oland", "Wheat_Spelt"]
+        
+        conf_pred = [class_list[np.argmax(i)] for i in y_pred]
+        conf_true = [class_list[np.argmax(i)] for i in Y]
+        
+        hey = conf_pred[conf_pred=="Rye_Midsummer"]
+        heyo = conf_true[conf_true=="Rye_Midsummer"]
+        
+        #print(np.mean(y_pred[y_pred==0]))
+        
+        conf_matrix = confusion_matrix(conf_true, conf_pred, labels=class_list)
+
+
+        print(np.sum(hey==heyo))
+        # Normalise
+        cmn = conf_matrix.astype('float') / conf_matrix.sum(axis=1)[:, np.newaxis]
+        cmn = cmn.T
+        cmn[cmn<0.005]=np.nan
+        fig, ax = plt.subplots(figsize=(10,10))
+        sns.heatmap(cmn, annot=True, fmt='.2f', cmap='Blues', square=True, xticklabels=class_list, yticklabels=class_list, vmin=0)
+        plt.ylabel('Predicted')
+        plt.xlabel('True')
+        plt.title(f'Confusion Matrix on Test Data')
+        plt.savefig(f"two_stage/figures/test_confusion.png", dpi=400)
         plt.show()
 
     return optimal_accur, optimal_RMSE, classifier
@@ -220,6 +267,7 @@ def PLS_show(classifier, X, Y, HSI, RMSE, dataset, img_path, img_names, ref=None
             filename_to_annotations[filename] = []
     
         filename_to_annotations[filename].append(annotation)
+    
     
     for image in tqdm(range(len(img_names))):
         spectral_img = HSI[image]
@@ -321,7 +369,7 @@ def PLS_show(classifier, X, Y, HSI, RMSE, dataset, img_path, img_names, ref=None
         
                     # Update the spread dictionary
                     spread[class_list[np.argmax(result2)]] += 1
-        
+                    
                     # Compute the cropped image and overlay on the original image
                     start_x = min(anno[0::2])
                     start_y = min(anno[1::2])
@@ -337,6 +385,7 @@ def PLS_show(classifier, X, Y, HSI, RMSE, dataset, img_path, img_names, ref=None
                     
                     dict_coco = add_2_coco(dict_coco, dataset, anno, img_names[image], np.argmax(result2))
                     spread[class_list[np.argmax(result2)]]+=1
+                    
                 #except:
                 #   print("Warning: Skipping object, Watershed gave 1 pixel object") # it sometimes predict 1 pixel instead of polygon
         dict_coco['images'].append({'id':coco_next_img_id(dict_coco),
@@ -364,7 +413,8 @@ def PLS_show(classifier, X, Y, HSI, RMSE, dataset, img_path, img_names, ref=None
             plt.title(f"{img_names[image][:-30]}, {type_classifier}")
             plt.savefig(f"two_stage/pls_results/{type_classifier}_{img_names[image]}.png", dpi=400)
             plt.show()
-    print(count)  
     export_json(dict_coco,f"two_stage/pls_results/PLS_coco_{type_classifier}.json")      
-
+    
+    
+    
 

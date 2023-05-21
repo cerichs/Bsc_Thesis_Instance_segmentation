@@ -30,12 +30,37 @@ def mask_in_window(mask, window_top_x,window_bottom_x, window_top_y, window_bott
     is_in = False
     for i in range(len(mask[0::2])):
         # Check if the mask point is inside the window
-        if (window_top_x <= mask[0::2][i] <= window_bottom_x) and  (window_top_y <= mask[1::2][i] <= window_bottom_y):
+        if (window_top_x < mask[0::2][i] < window_bottom_x) and  (window_top_y < mask[1::2][i] < window_bottom_y):
             is_in = True
         else:
             continue
     return is_in
 
+
+def pad_image(original_img, pad_value=0, pad_width=2):
+    """
+    Pads an image with a constant value.
+
+    Args:
+        original_img (ndarray): The original image.
+        pad_value (int, optional): The value used for padding. Defaults to 0 (black).
+        pad_width (int, optional): The width of the padding in pixels. Defaults to 2.
+
+    Returns:
+        ndarray: The padded image.
+    """
+
+    padded_img = original_img.copy()
+
+    # Pad the left and right boundaries
+    padded_img[:, :pad_width] = pad_value
+    padded_img[:, -pad_width:] = pad_value
+
+    # Pad the top and bottom boundaries
+    padded_img[:pad_width, :] = pad_value
+    padded_img[-pad_width:, :] = pad_value
+
+    return padded_img
     
 
 def extract_subwindow(original_img, new_annotation, new_id, window_size, image_id, image_dir, image_name, dataset, z=1234, plot_mask=False):
@@ -70,8 +95,11 @@ def extract_subwindow(original_img, new_annotation, new_id, window_size, image_i
     bottom_right_x = top_left_x + window_width
     bottom_right_y = top_left_y + window_height
 
-    # Extract the subwindow from the original image
-    subwindow = original_img[top_left_y:bottom_right_y, top_left_x:bottom_right_x]
+    # Pad the image before extracting the subwindow
+    padded_img = pad_image(original_img)
+    
+    # Extract the subwindow from the padded image
+    subwindow = padded_img[top_left_y:bottom_right_y, top_left_x:bottom_right_x]
 
     # Initialize a new mask for the subwindow
     mask = np.zeros((window_height, window_width), dtype=np.uint8)
@@ -91,7 +119,7 @@ def extract_subwindow(original_img, new_annotation, new_id, window_size, image_i
                     new_x = coord_x - top_left_x
                     new_y = coord_y - top_left_y
                     
-                    if (0 <= new_x <= window_width) and (0 <= new_y <= window_height):
+                    if (0 < new_x < window_width - 1) and (0 < new_y < window_height - 1 ):
                         new_coords.extend([new_x, new_y])
                     
                 if len(new_coords) > 0:
@@ -99,7 +127,9 @@ def extract_subwindow(original_img, new_annotation, new_id, window_size, image_i
                     min_x, min_y = min(new_coords[::2]), min(new_coords[1::2])
                     max_x, max_y = max(new_coords[::2]), max(new_coords[1::2])
                     cropped_bbox = [min_x, min_y, max_x - min_x, max_y - min_y]
-                    
+                else:
+                    continue
+
                 new_coords_coords = []
                 for coord_x, coord_y in zip(ann['segmentation'][0][0::2], ann['segmentation'][0][1::2]):
                     new_x = coord_x - top_left_x
@@ -110,20 +140,21 @@ def extract_subwindow(original_img, new_annotation, new_id, window_size, image_i
                     if new_x <= 0:
                         new_x = 0
                     
-                    elif new_x >= window_width:
+                    elif new_x >= window_width - 1:
                         new_x = window_width - 1
                     
                     if new_y <= 0:
                         new_y = 0
                     
-                    elif new_y >= window_height:
+                    elif new_y >= window_height - 1:
                         new_y = window_height - 1
 
-                    dup_dict[(new_x,new_y)] = 0
-                    
+                    dup_dict[(new_x,new_y)] = (coord_x - top_left_x, coord_y - top_left_y)
+                                    
                 for x, y in dup_dict.keys():
-                    if  (min_x <= x <= max_x) and (min_y <= y <= max_y):
-                        new_coords_coords.extend([x, y])
+                    if 'min_x' in locals() and 'min_y' in locals() and 'max_x' in locals() and 'max_y' in locals():
+                        if  (min_x <= x <= max_x) and (min_y <= y <= max_y):
+                            new_coords_coords.extend([x, y])
                     else:
                         continue
                     

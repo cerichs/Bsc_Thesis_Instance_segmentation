@@ -33,8 +33,8 @@ def watershedd(original_im, image_t, minimum_distance=12, plot=False):
     if plot:
         ## Dist_transform and pixel-plot
         #creating colors
-        cvals = [-i for i in range(int(np.max(dist_transform)))][::-1][::2]
-        colors = ["midnightblue","navy", "darkblue", "mediumblue", "royalblue", "deepskyblue", "cyan", "black"][::-1]
+        cvals = [-i for i in range(int(np.max(dist_transform)))][::-1][::2][:7]
+        colors = ["midnightblue", "navy", "darkblue", "mediumblue", "royalblue", "cyan", "black"][::-1]
         norm=plt.Normalize(min(cvals),max(cvals))
         tuples = list(zip(map(norm,cvals), colors))
         cmap = mpl.colors.LinearSegmentedColormap.from_list("", tuples)
@@ -42,8 +42,8 @@ def watershedd(original_im, image_t, minimum_distance=12, plot=False):
         #creating subwindow of image (pretty centered - but one can change x_idx and y_idx)
         window_size = (32, 32)
         window_height, window_width = window_size
-        x_idx = 250
-        y_idx = 200
+        x_idx = 232
+        y_idx = 180
         top_left_x =  x_idx - window_width
         top_left_y =  y_idx - window_height
         bottom_right_x = top_left_x + window_width
@@ -63,7 +63,7 @@ def watershedd(original_im, image_t, minimum_distance=12, plot=False):
                                          fill = False,
                                          lw=5))
         
-        plt.savefig("two_stage/figures/watershed1.png",dpi=100)
+        #plt.savefig("two_stage/figures/watershed1.png",dpi=100)
         plt.show()
         
         subwindow = dist_transform[top_left_y:bottom_right_y, top_left_x:bottom_right_x]
@@ -95,7 +95,7 @@ def watershedd(original_im, image_t, minimum_distance=12, plot=False):
                                          edgecolor="red",
                                          fill = False,
                                          lw=5))
-        plt.savefig("two_stage/figures/watershed2.png", dpi=100)
+        #plt.savefig("two_stage/figures/watershed2.png", dpi=100)
         plt.show()
         
 
@@ -107,7 +107,7 @@ def watershedd(original_im, image_t, minimum_distance=12, plot=False):
             for j in range(subwindow2.shape[1]):
                 ax.text(j, i, str(int(subwindow2[i, j])), color='white', ha='center', va='center').set_path_effects([PathEffects.withStroke(linewidth=0.5, foreground='white')])
                 ax.axis("off")
-        plt.savefig("two_stage/figures/watershed_pixelplot.png", dpi=200)
+        #plt.savefig("two_stage/figures/watershed_pixelplot.png", dpi=200)
         plt.show()
 
 
@@ -129,7 +129,7 @@ def watershedd(original_im, image_t, minimum_distance=12, plot=False):
                 ax.plot(temp[0::2],temp[1::2],linestyle="-",linewidth=3)
                 
         ax.axis('off')
-        plt.savefig("two_stage/figures/watershed_output.png",dpi=100)
+        #plt.savefig("two_stage/figures/watershed_output.png",dpi=100)
         plt.show()
         
     
@@ -173,7 +173,7 @@ if __name__ == "__main__":
     
     image_id = 1
     PATH = r"C:\Users\admin\Desktop\bachelor\Bsc_Thesis_Instance_segmentation\preprocessing\images"
-    img_name = r"C:\Users\jver\Desktop\Validation\rgb\3_window_Validation_Wheat_H3_Dense_series1_20_08_19_13_02_51.jpg"
+    img_name = r"C:\Users\jver\Desktop\COCO_single\PLS_eval_img_rgb\0_window_Test_Wheat_H1_Dense_series2_20_08_19_13_55_36.jpg"
     #img_name = os.path.join(PATH, image_name)
     
     

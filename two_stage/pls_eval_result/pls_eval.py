@@ -101,7 +101,7 @@ def dataset_prep(dataset,root: str):
 def evaluate_model(classifier,dataset, ref):
     
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-    dataset_test, data_loader_test = dataset_prep(dataset,r"C:\Users\jver\Desktop\Validation\windows")
+    dataset_test, data_loader_test = dataset_prep(dataset,r"C:\Users\jver\Desktop\COCO_single")
     n_threads = torch.get_num_threads()
     cpu_device = torch.device("cpu")
     coco = get_coco_api_from_dataset(dataset_test.dataset)
@@ -159,6 +159,9 @@ def PLS_class(classifier,images,img_path, dataset, ref):
         result_dict["scores"] = []
         result_dict["masks"] = []
         
+        plt.figure(dpi=400)
+        plt.imshow(rgb_image)
+        
         for mask_id in np.add(unique_labels, 300)[1:]: # Offset labels to avoid error if mask_id == 255 from Watershed (happens if there are more than 255 grain-kernels)
             mask = markers.copy()
             mask = np.add(mask, 300)
@@ -166,25 +169,21 @@ def PLS_class(classifier,images,img_path, dataset, ref):
             mask[mask == mask_id] = 255
 
             # Compute the pixel average of the spectral image for each grain_mask
-            pixel_avg = pixel_average(spectral_img, [mask], None, path.split("\\")[-1])[0]
-            #pixel_avg = pixel_median(spectral_img, [mask], None, path.split("\\")[-1])[0]
+            #pixel_avg = pixel_average(spectral_img, [mask], None, path.split("\\")[-1])[0]
+            pixel_avg = pixel_median(spectral_img, [mask], None, path.split("\\")[-1])[0]
             
             #Mean-Center
             #mean_center = mean_centering(pd.DataFrame(pixel_avg), ref=ref)
             #pixel_avg = mean_center.values
             
             #Mean-center MSC
-            msc = msc_hyp(pd.DataFrame(pixel_avg), ref=ref)[0]
-            mean_msc = mean_centering(msc, ref=ref)
-            pixel_avg = mean_msc.values
+            #msc = msc_hyp(pd.DataFrame(pixel_avg), ref=ref)[0]
+            #mean_msc = mean_centering(msc, ref=ref)
+            #pixel_avg = mean_msc.values
             
-            #Median-Center
-            #median_center = median_centering(pd.DataFrame(pixel_avg), ref=ref)[0]
-            #pixel_avg = median_center.values
             
-
             # Get prediction for the mask
-            result2 = classifier.predict(pixel_avg, A=5)
+            result2 = classifier.predict(pixel_avg, A=13-1)
 
             contours, _ = cv.findContours(np.uint8(mask), cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE) # CHAIN_APPROX_NONE to avoid RLE
             if len(contours) != 1 or (len(np.squeeze(contours))) <= 2:
@@ -201,12 +200,33 @@ def PLS_class(classifier,images,img_path, dataset, ref):
                 #result_dict["labels"].extend([1.0]) # uncomment to see ONLY watershed with no PLS (ie. no predicted classes)
                 result_dict["scores"].extend([1.0]) # set higher than conf threshold
                 result_dict["masks"].append(np.expand_dims(mask/255, axis=-3)) # HW to CHW
-
+                
+                x, y = anno[0::2],anno[1::2] # comes in pair of [x,y,x,y,x,y], there split with even and uneven
+                plt.fill(x, y, alpha=.3, color=color[np.argmax(result2)],label = class_list[np.argmax(result2)])
+                    
+        
         result_dict["boxes"] = torch.tensor(result_dict["boxes"])
         result_dict["labels"] = torch.tensor(result_dict["labels"])
         result_dict["scores"] = torch.tensor(result_dict["scores"])
         result_dict["masks"] = torch.tensor(result_dict["masks"])
         result.append(result_dict)
+        
+        handles, labels = plt.gca().get_legend_handles_labels()
+        
+        #res = (np.argmax(result2, axis=1) == np.argmax(Y[image], axis=1)).sum()
+        #accuracy = (res / len(Y[image]))
+        
+        # Sort the legend alphabetically by class name
+        handles, labels = plt.gca().get_legend_handles_labels()
+        by_label = dict(zip(labels, handles))
+        sorted_labels = sorted(by_label.keys())
+        sorted_handles = [by_label[label] for label in sorted_labels]
+        
+        plt.legend(sorted_handles, sorted_labels, loc="center left", bbox_to_anchor =(1,0.5))
+        plt.axis("off")
+        #plt.title(f"{img_names[image][:-30]}, {type_classifier}")
+        plt.savefig(f"pls_results/med_MC.png", dpi=400)
+        plt.show()
     return result
     
 def coco_2_masked_img(dataset_path):
@@ -221,28 +241,29 @@ def coco_2_masked_img(dataset_path):
                 row, col = polygon(y, x)
                 empty_mask[row,col] = label
                 label += 1
-        cv.imwrite(f"C:/Users/jver/Desktop/Validation/windows/masks/{dataset['images'][i]['file_name'][:-4]}.png",empty_mask)
+        cv.imwrite(f"C:/Users/jver/Desktop/COCO_single/masks/{dataset['images'][i]['file_name'][:-4]}.png",empty_mask)
         #plt.imshow(empty_mask,interpolation="none")
         #plt.savefig(f"I:/HSI/masks/{dataset['images'][i]['file_name'][:-4]}.png")
 
 
 
 def main():
-    coco_2_masked_img(r"C:\Users\jver\Desktop\Validation\windows\COCO_HSI_windowed.json") # uncomment to make PNG images with masks from a COCO json file
+    coco_2_masked_img(r"C:\Users\jver\Desktop\COCO_single\COCO_rgb_windowed_test_single.json") # uncomment to make PNG images with masks from a COCO json file
     #data = pd.read_csv(r"C:\Users\Corne\Downloads\Pixel_grain_avg_dataframe_train_whole_img.csv")
-    data = pd.read_csv(r"C:\Users\jver\Desktop\dtu\Bsc_Thesis_Instance_segmentation-main\Bsc_Thesis_Instance_segmentation\two_stage\pls_results\Pixel_grain_avg_dataframe_train_meanMSC_whole_img.csv")
-    ref_average = pd.read_csv(r"C:\Users\jver\Desktop\dtu\Bsc_Thesis_Instance_segmentation-main\Bsc_Thesis_Instance_segmentation\MSC.csv", header=None)
+    data = pd.read_csv(r"C:\Users\jver\OneDrive - Netcompany\Desktop\dtu\Bsc_Thesis_Instance_segmentation-main\Bsc_Thesis_Instance_segmentation\two_stage\pls_results\Pixel_grain_avg_dataframe_train_mediangrain.csv")
+    ref_average = pd.read_csv(r"C:\Users\jver\OneDrive - Netcompany\Desktop\dtu\Bsc_Thesis_Instance_segmentation-main\Bsc_Thesis_Instance_segmentation\MSC.csv", header=None)
     ref_average = ref_average.iloc[:,1].values[1:]
-    ref_median = pd.read_csv(r"C:\Users\jver\Desktop\dtu\Bsc_Thesis_Instance_segmentation-main\Bsc_Thesis_Instance_segmentation\median.csv", header=None)
-    ref_median = ref_median.iloc[:,1].values[1:]
+    
     X = data.iloc[:,2:]
     y_test = data.label
     Y = [eval(y_test[i]) for i in range(len(y_test))]
     classifier = PLS(algorithm=2)
     classifier.fit(X, Y, 102)
     #classifier.predict(X, A=20)
-    dataset = Dataset(r'C:\Users\jver\Desktop\Validation\windows')
+    dataset = Dataset(r'C:\Users\jver\Desktop\COCO_single')
     evaluate_model(classifier,dataset, ref_average)
+
+
 
 
 if __name__ == "__main__":

@@ -5,9 +5,9 @@ import sys
 
 sys.path.append("..")
 
-from Display_mask import load_coco, load_annotation, find_image, draw_img
-from crop_from_mask import crop_from_mask, fill_mask,overlay_on_larger_image
-from preprocess_image import spectral_test, binarization
+from .Display_mask import load_coco, load_annotation, find_image, draw_img
+from .crop_from_mask import crop_from_mask, fill_mask,overlay_on_larger_image
+from .preprocess_image import spectral_test, binarization
 from two_stage.watershed_2_coco import empty_dict, export_json
 
 

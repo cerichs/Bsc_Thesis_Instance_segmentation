@@ -4,6 +4,7 @@ import numpy as np
 from skimage.draw import polygon
 import os
 import re
+from tqdm import tqdm
 
 
 def find_imgs(dataset, hyp_folder, pseudo_folder):
@@ -57,9 +58,17 @@ def find_imgs(dataset, hyp_folder, pseudo_folder):
 
 def process_data(dataset, hyper_imgs, pseudo_imgs, img_names, image_ids, whole_img=False):
     
+    """
+    hyper_imgs.sort(reverse=True)
+    pseudo_imgs.sort(reverse=True)
+    img_names.sort(reverse=True)
+    image_ids.sort(reverse=True)
+    """
+    
     #HSI = [spectral_test(hyper_imgs[image]) for image in range(len(hyper_imgs))]
     HSI = [np.load(hyper_imgs[image]) for image in range(len(hyper_imgs))]
     g_masks = []
+    
     
     for i in range(len(hyper_imgs)):
         if whole_img:
@@ -71,12 +80,13 @@ def process_data(dataset, hyper_imgs, pseudo_imgs, img_names, image_ids, whole_i
             g_masks.append(grains_mask)  
             split = "grain"
             
+            
+    
     ids = []
     X = []
     X_median = []
     y = []
-    
-    for images in range(len(g_masks)):
+    for images in tqdm(range(len(g_masks))):
         pixel_avg, label, img_id = pixel_average(HSI[images], g_masks[images], image_ids[images], img_names[images])
         pixel_medis, label, img_id = pixel_median(HSI[images], g_masks[images], image_ids[images], img_names[images])
         ids.append(img_id)
@@ -133,6 +143,7 @@ def extract_binary_kernel(dataset, pseudo_rgbs_path, img_name):
             x_x, y_y = int(x_x), int(y_y)
             mini_img[y_y, x_x] = True
             
+        
         binary_grain_mask = mini_img.astype(int)
         
         # Fill in the polygonal region of the annotation
@@ -171,6 +182,14 @@ def pixel_average(hyperspectral_image, binary_mask, image_id, image_name):
     
     # Loop through each binary mask
     for mask in binary_mask:
+        """
+        import matplotlib.pyplot as plt
+        plt.imshow(mask)
+        plt.show()
+        plt.imshow(hyperspectral_image[:,:,0])
+        plt.show()
+        """
+        
         # Extract the pixel values for each grain mask
         grains = hyperspectral_image[mask == 255, :] # Only consider pixels with value 255
         

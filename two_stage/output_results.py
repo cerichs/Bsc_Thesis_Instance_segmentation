@@ -31,14 +31,20 @@ def create_dataframe(mask_ids, labels, pixel_averages, split):
         df = pd.DataFrame(columns=[None]*104)
         df.columns = ["image_id"] + ["label"] + [f"wl{i}" for i in range(1, 103)]
         
+        # define a list to store all rows
+        rows = []
         for image in range(len(mask_ids)):
             for mask in range(len(mask_ids[image])):
-                # Creating list of length 104 with mask_ids, one-hot label, and respective 102 pixel-averages
-                temp = [mask_ids[image][mask]] + [labels[image][mask]] + pixel_avg[image][mask].tolist()
-            
-                # Appending this to the dataframe
-                df.loc[len(df)] = temp
+                # Creating dictionary with mask_ids, one-hot label, and respective 102 pixel-averages
+                temp_dict = {"image_id": mask_ids[image][mask], "label": labels[image][mask]}
+                temp_dict.update({f"wl{i}": value for i, value in enumerate(pixel_avg[image][mask].tolist(), start=1)})
                 
+                # Adding this dictionary to the list
+                rows.append(temp_dict)
+        # Create a dataframe from the list of dictionaries
+        df = pd.DataFrame(rows)
+
+
     elif isinstance(pixel_avg, pd.DataFrame):
         flattened_ids = [val for sublist in mask_ids for val in sublist]
         flattened_labels = [val for sublist in labels for val in sublist]
