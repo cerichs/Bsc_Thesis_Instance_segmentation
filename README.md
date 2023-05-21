@@ -27,6 +27,10 @@ YOLO/segment/predict-HSI.py -> YOLO/segment/predict.py
 YOLO/utils/dataloaders-HSI.py -> YOLO/utils/dataloaders.py
 YOLO/utils/segment/dataloaders-HSI.py -> YOLO/utils/dataloaders.py
 ```
+
+The scripts to run Pseudo-RGB don't have any changes compared to the official YOLOv5 repository.
+The changes made to run on HSI are in the 5 files mentioned above, all the rest is untouched.
+
 To run YOLO either follow the documentation from Ultralytics in [README.md](https://github.com/cerichs/Bsc_Thesis_Instance_segmentation/blob/optimize/YOLO/README.md) or use the command line below:
 
 (Assuming the terminal current directory is the YOLO folder)
@@ -41,4 +45,25 @@ python segment/val.py --weights /PATH/TO/BEST/WEIGHT/best.pt --data grainSpectra
 
 ```command
 python segment/predict.py --weights /PATH/TO/BEST/WEIGHT/best.pt --img 256 --conf 0.45 --source /PATH/TO/FOLDER/WITH/IMAGES/TO/PREDICT --hide-label --hide-conf --line-thickness 1
+```
+
+The convert a .json file in COCO format, we recommend using the script by Ultralytics, which has been modified to fit our classes. Can be accesed [Here](https://github.com/cerichs/Bsc_Thesis_Instance_segmentation/blob/optimize/YOLO/JSON2YOLO-master/general_json2yolo.py). 
+
+Currently it convers the COCO json file to Classification to convert to Binary classification the following codesnippet has to be changed (line 48-52)
+
+```python
+class_list = [ 1412692,     1412693,   1412694,   1412695,    1412696,     1412697,      1412698,    1412699,     1412700]
+#            [Rye_midsummer, Wheat_H1, Wheat_H3,  Wheat_H4,   Wheat_H5, Wheat_Halland,  Wheat_Oland, Wheat_Spelt, Foreign]
+cls = class_list.index(cls)
+#cls = 0
+box = [cls] + box.tolist()
+```
+To make the binary classification labels change it to:
+
+```python
+class_list = [ 1412692,     1412693,   1412694,   1412695,    1412696,     1412697,      1412698,    1412699,     1412700]
+#            [Rye_midsummer, Wheat_H1, Wheat_H3,  Wheat_H4,   Wheat_H5, Wheat_Halland,  Wheat_Oland, Wheat_Spelt, Foreign]
+#cls = class_list.index(cls)
+cls = 0
+box = [cls] + box.tolist()
 ```
