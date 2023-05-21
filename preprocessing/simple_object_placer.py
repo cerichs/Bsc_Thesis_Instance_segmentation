@@ -31,11 +31,11 @@ def find_x_y(larger_image,smaller_image,annotation,height,width):
         temp = larger_image[y:y+smaller_image.shape[0], x:x+smaller_image.shape[1]]
         overlap_amount = np.sum(np.multiply(temp,smaller_image))
         #print(overlap_amount)
-        if overlap_amount<25000: #TODO make it a ratio of kernel, as smaller kernels constantly overlapped
+        if overlap_amount<500: #TODO make it a ratio of kernel, as smaller kernels constantly overlapped
             run = False
             keep = True
         count+=1
-        if count>50:
+        if count>30:
             run = False
             keep = False
     return x, y, keep
@@ -78,13 +78,13 @@ def coco_new_bbox(x,y,dataset,image_id,annotation_numb):
     height = max(annote[1::2])-min(annote[1::2])
     return [x,y,width,height]
 
-def create_synth_img(image_dir, save_dir, class_list, dataset, dict_coco, ch=3, n=200, plot_mask = False):
+def create_synth_img(image_dir, save_dir, class_list, dataset, dict_coco, ref_vales, ch=3, n=200, plot_mask = False):
     for c in range(n):
         background = np.zeros((256,256,ch),dtype = np.float64)
         if ch == 3:
             background = np.zeros((256,256,ch),dtype = np.uint8)
             background = cv.cvtColor(background, cv.COLOR_BGR2RGB)
-        max_tries=200 # amount of kernel to randomly sample and try to place
+        max_tries=100 # amount of kernel to randomly sample and try to place
         class_check= [0]*8
         j=0
         while(j<max_tries):
@@ -109,21 +109,29 @@ def create_synth_img(image_dir, save_dir, class_list, dataset, dict_coco, ch=3, 
                                       'category_id':dataset['annotations'][annotation_numb]['category_id']
                                       })
                 class_check[class_list.index(dataset['annotations'][annotation_numb]['category_id'])] += 1
+
             else:
                 pass
             j+=1
+            #print(j)
         #print(class_check)
         if ch == 3:
             background= cv.cvtColor(background, cv.COLOR_BGR2RGB)
             cv.imwrite(save_dir + f"\\Synthetic_{c}.jpg",background)
         else:
+            ref = np.load(ref_vales)
+            for x in range(background.shape[1]):
+                for y in range(background.shape[0]):
+                    for channel in range(background.shape[2]):
+                        if background[y,x,channel] == 0:
+                            background[y,x,channel]=ref[channel]
             np.save(save_dir + f"\\Synthetic_{c}.npy",background)
         dict_coco['images'].append({'id':c+1,
                                     'file_name': f"Synthetic_{c}.jpg",
                                     'license':1,
                                     'height':background.shape[0],
                                     'width':background.shape[1]})
-    export_json(dict_coco,"COCO_balanced_1k_val.json")
+    export_json(dict_coco,"COCO_balanced_1k_test.json")
     
     plot_mask = False
     if plot_mask:
@@ -164,11 +172,12 @@ def create_synth_img(image_dir, save_dir, class_list, dataset, dict_coco, ch=3, 
 
 if __name__=="__main__":
     #annotation_path = r'C:\Users\Cornelius\Documents\GitHub\Bscproject\Bsc_Thesis_Instance_segmentation\preprocessing\COCO_Test.json'
-    annotation_path = 'C:/Users/Corne/Downloads/DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo/Test/COCO_Test.json'
+    annotation_path = 'C:/Users/Corne/Downloads/DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo/Validation/COCO_Validation_orig.json'
     #image_dir = 'C:/Users/Cornelius/Documents/GitHub/Bscproject/Bsc_Thesis_Instance_segmentation/preprocessing/'
     #image_dir = 'C:/Users/Corne/Downloads/DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo/Test/images/'
-    image_dir = 'I:/HSI/test/'
-    save_dir = r'C:\Users\Corne\Documents\GitHub\Bsc_Thesis_Instance_segmentation\preprocessing\images'
+    ref_vales = "I:/HSI/background_values.npy"
+    image_dir = 'I:/HSI/validation/'
+    save_dir = r'I:\HSI\HSI_syntetisk_val'
     dataset = load_coco(annotation_path)
     dict_coco = empty_dict()
     dict_coco['categories']=dataset['categories']
@@ -176,7 +185,7 @@ if __name__=="__main__":
     dict_coco['licenses']=dataset['licenses']
     class_list = [ 1412692,     1412693,   1412694,   1412695,    1412696,     1412697,      1412698,    1412699,     1412700]
     #           [Rye_midsummer, Wheat_H1, Wheat_H3,  Wheat_H4,   Wheat_H5, Wheat_Halland,  Wheat_Oland, Wheat_Spelt, Foreign]
-    create_synth_img(image_dir, save_dir, class_list, dataset, dict_coco, ch=102, n=1, plot_mask = False)
+    create_synth_img(image_dir, save_dir, class_list, dataset, dict_coco, ref_vales, ch=102, n=100, plot_mask = False)
                 
     
 # =============================================================================
