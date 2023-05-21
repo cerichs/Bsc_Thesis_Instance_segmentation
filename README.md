@@ -14,7 +14,7 @@ The two-stage approach aswell as the data generation using cropped subwindows an
 **Important**, the Two-Stage approach uses a non published PLS-DA algorithm implementation by Ole-Christian Galbo Engstrøm from FOSS (ocge@foss.dk). It is therefore not in this repository, the script can be accessed in the Teams channel used for meetings and contact.
 
 ## <div align="center">Running YOLO</div>
-The YOLOv5 Pseudo-RGB training ([submit.sh](https://github.com/cerichs/Bsc_Thesis_Instance_segmentation/blob/optimize/YOLO/submit.sh)), validation ([submit-val.sh](https://github.com/cerichs/Bsc_Thesis_Instance_segmentation/blob/optimize/YOLO/submit-val.sh)) and prediction ([submit-predict.sh](https://github.com/cerichs/Bsc_Thesis_Instance_segmentation/blob/optimize/YOLO/submit-predict.sh)) scripts have to be run through the commandline.
+The YOLOv5 Pseudo-RGB training, validation and prediction scripts have to be run through the commandline.
 
 **Important**, due to both Pseudo-RGB and HSI training scripts are contained within this, 5 files have to be renamed to train Pseudo-RGB or HSI.
 
@@ -78,4 +78,23 @@ class_list = [ 1412692,     1412693,   1412694,   1412695,    1412696,     14126
 #cls = class_list.index(cls)
 cls = 0
 box = [cls] + box.tolist()
+```
+
+
+## <div align="center">Running YOLO on DTU's HPC GPU Cluster</div>
+The virtual environment used on HPC exceeds the 2GB limitation on GitHub, it therefore has to be manually made on your machine using [README.md](https://github.com/ultralytics/yolov5/blob/master/requirements.txt).
+To run on DTU's HPC the following shell scripts can be used (paths has to be changed):<br>
+Training: [submit.sh](https://github.com/cerichs/Bsc_Thesis_Instance_segmentation/blob/optimize/YOLO/submit.sh)
+```command
+bsub < submit.sh
+```
+
+Validation: [submit-val.sh](https://github.com/cerichs/Bsc_Thesis_Instance_segmentation/blob/optimize/YOLO/submit-val.sh)
+```command
+bsub < submit-val.sh
+```
+
+Prediction: [submit-predict.sh](https://github.com/cerichs/Bsc_Thesis_Instance_segmentation/blob/optimize/YOLO/submit-predict.sh)
+```command
+bsub < submit-predict.sh
 ```
