@@ -1,13 +1,13 @@
 #!/bin/sh
 #BSUB -J torch_gpu
-#BSUB -o v5m_improved_crop_synth_torch_gpu_%J.out
-#BSUB -e v5m_improved_crop_synth_torch_gpu_%J.err
+#BSUB -o vxxn_BIN_RGB_%J.out
+#BSUB -e vxxn_BIN_RGB_%J.err
 #BSUB -n 2
-#BSUB -q gpua100
+#BSUB -q gpuv100
 #BSUB -gpu "num=1:mode=exclusive_process"
-#BSUB -R "rusage[mem=32G]"
+#BSUB -R "rusage[mem=128G]"
 #BSUB -R "span[hosts=1]"
-#BSUB -W 900
+#BSUB -W 600
 # end of BSUB options
 
 # load a scipy module
@@ -22,8 +22,8 @@ module load cuda/11.0
 # NOTE: needs to have been built with the same SciPy version above!
 source /work3/coer/Bachelor/yolov5/instance-segm-yolo/bin/activate
 
-python segment/train.py --img 256 --batch-size 32 --epochs 400 --data grain256_balanced.yaml --weights '' --cfg /work3/coer/Bachelor/yolov5/models/segment/yolov5m-seg-improved.yaml --cfg /work3/coer/Bachelor/yolov5/models/segment/yolov5m-seg-improved.yaml --cache
-
+python segment/train.py --img 256 --batch-size 32 --epochs 400 --data grain256_april.yaml --weights '' --cfg /work3/coer/Bachelor/yolov5/models/segment/yolov5xn-seg.yaml --cache 
+#python segment/train.py --img 256 --batch-size 64 --epochs 300 --data grainSpectral_binary.yaml --weights '' --cfg /work3/coer/Bachelor/yolov5/models/segment/yolov5l-seg.yaml --hyp /work3/coer/Bachelor/yolov5/data/hyps/hyp.no-augmentation.yaml --optimizer "Adam"
 
 #python segment/val.py --weights yolov5s-seg.pt --data grain.yaml --img 640 --name coco
 
