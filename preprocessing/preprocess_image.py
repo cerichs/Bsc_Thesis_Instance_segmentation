@@ -86,8 +86,11 @@ def spectral_test(img_path):
     np.seterr(divide='ignore')
     array = np.load(img_path)
     
+    # Get the original filename of the image
+    filename = os.path.basename(img_path)
+    
     # Get the original filename of the image, and the corresponding subtracted and multiplied filenames
-    temp = ("_").join(img_path.split("_")[3:])
+    temp = ("_").join(filename.split("_")[3:])
     sub = "subtracted_" + temp
     mult = "Multiplied_" + temp
         

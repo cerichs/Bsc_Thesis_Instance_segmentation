@@ -1,9 +1,5 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Tue May  2 08:16:26 2023
-
-@author: jver
-"""
+import sys
+sys.path.append(".")
 
 import copy
 import os
@@ -11,7 +7,7 @@ import os
 import torch
 import torch.utils.data
 import torchvision
-import transforms as T
+from . import transforms as T
 from pycocotools import mask as coco_mask
 from pycocotools.coco import COCO
 

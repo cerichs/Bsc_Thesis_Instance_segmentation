@@ -1,11 +1,11 @@
 import sys
 sys.path.append("..")
 
-from Display_mask import load_coco
+from .Display_mask import load_coco
 from two_stage.watershed_2_coco import empty_dict, export_json
-from simple_object_placer import coco_next_anno_id
-from random_original import extract_subwindow
-from preprocess_image import spectral_test
+from .simple_object_placer import coco_next_anno_id
+from .random_original import extract_subwindow
+from .preprocess_image import spectral_test
 
 import numpy as np
 import cv2 as cv
@@ -35,33 +35,8 @@ def mask_in_window(mask, window_top_x,window_bottom_x, window_top_y, window_bott
     return is_in
 
 
-def pad_image(original_img, pad_value=0, pad_width=2):
-    """
-    Pads an image with a constant value.
 
-    Args:
-        original_img (ndarray): The original image.
-        pad_value (int, optional): The value used for padding. Defaults to 0 (black).
-        pad_width (int, optional): The width of the padding in pixels. Defaults to 2.
-
-    Returns:
-        ndarray: The padded image.
-    """
-
-    padded_img = original_img.copy()
-
-    # Pad the left and right boundaries
-    padded_img[:, :pad_width] = pad_value
-    padded_img[:, -pad_width:] = pad_value
-
-    # Pad the top and bottom boundaries
-    padded_img[:pad_width, :] = pad_value
-    padded_img[-pad_width:, :] = pad_value
-
-    return padded_img
-    
-
-def extract_subwindow_HSI(original_img, new_annotation, new_id, window_size, img_id, image_dir, image_name, dataset, z=1234, plot_mask=False):
+def extract_subwindow_HSI(original_img, new_annotation, new_id, window_size, image_id, image_dir, image_name, dataset, z=1234, plot_mask=False):
     """
     Extract a subwindow from the original image and update the annotation information.
 
@@ -94,7 +69,7 @@ def extract_subwindow_HSI(original_img, new_annotation, new_id, window_size, img
     bottom_right_x = top_left_x + window_width
     bottom_right_y = top_left_y + window_height
 
-    # Extract the subwindow from the padded image
+    # Extract the subwindow
     subwindow = original_img[top_left_y:bottom_right_y, top_left_x:bottom_right_x]
 
     # Initialize a new mask for the subwindow
@@ -179,33 +154,23 @@ def extract_subwindow_HSI(original_img, new_annotation, new_id, window_size, img
 
 
 
-if __name__ == "__main__":
+def extract_subwindow_main(annotation_path, HSI_image_dir, rgb_image_dir, n=100):
 
-    #annotation_path = r'C:\Users\Cornelius\Documents\GitHub\Bscproject\Bsc_Thesis_Instance_segmentation\preprocessing\COCO_Test.json'
-    #annotation_path = 'C:/Users/Cornelius/Downloads/DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo/Test/COCO_Test.json'
-    annotation_path = r"C:\Users\jver\Desktop\dtu\DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo\Test\COCO_Test.json"
-    #image_dir = 'C:/Users/Cornelius/Downloads/DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo/Test/images/
-    HSI_image_dir = r"C:\Users\jver\Desktop\Test"
-    
-    
-    rgb_image_dir = r'C:\Users\jver\Desktop\dtu\DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo\Test\images/'
-    
-    
     # Initialize empty annotation dictionaries for HSI and RGB images
     HSI_new_annotation = empty_dict()
     dataset = load_coco(annotation_path)
     HSI_new_annotation["categories"] = dataset["categories"]
-    
+
     rgb_new_annotation = empty_dict()
     rgb_new_annotation["categories"] = dataset["categories"]
-    
-    #class_list = [ 1412692,     1412693,   1412694,   1412695,    1412696,     1412697,      1412698,    1412699,     1412700]
+
+    # Initialize other variables
     class_list = ["Rye_Midsummer", "Wheat_H1", "Wheat_H3",  "Wheat_H4",   "Wheat_H5", "Wheat_Halland",  "Wheat_Oland", "Wheat_Spelt"]
     class_check = [0]*8 
     class_check_Dense = [0]*8 
     class_check_sparse = [0]*8 
     c = 0
-    n = 100
+
     while (c < n):
 
         image_id = np.random.randint(0, len(dataset["images"]))   ### choose random image
@@ -228,6 +193,7 @@ if __name__ == "__main__":
                 class_check[ids[0]] += 1
                 # Get image-info from JSON
                 HSI_image_path = os.path.join(HSI_image_dir, image_name)
+        
                 rgb_image_path = os.path.join(rgb_image_dir, image_name)
                 if not HSI_image_path.endswith(".npy"):
                     HSI_image_path = HSI_image_path[:-3]+"npy"
@@ -235,8 +201,6 @@ if __name__ == "__main__":
                 if not rgb_image_path.endswith(".jpg"):
                     rgb_image_path = rgb_image_path[:-3]+"jpg"
                     
-                    
-                
                 HSI_img = spectral_test(HSI_image_path)
                 
                 image_name = image_name.split(".")[0]
@@ -260,16 +224,16 @@ if __name__ == "__main__":
                 #c = image_id
                 
                 #subwindow = cv.cvtColor(subwindow, cv.COLOR_BGR2RGB)
-                HSI_output_path = r"C:\Users\jver\Desktop\Test\windows\PLS_eval_img" 
+                HSI_output_path = os.path.join(HSI_image_dir, "windows\PLS_eval_img") 
                 np.save(HSI_output_path + "\\" +  f"{c}_window_{image_name}.npy",HSI_subwindow)
                 
                 
-                rgb_output_path = r"C:\Users\jver\Desktop\Test\windows\\PLS_eval_img_rgb" 
+                rgb_output_path = os.path.join(HSI_image_dir, "windows\PLS_eval_img_rgb") 
                 subwindow = cv.cvtColor(rgb_subwindow, cv.COLOR_RGB2BGR)
                 cv.imwrite(rgb_output_path + "\\" + f"{c}_window_{image_name}.jpg", subwindow)
                 #np.save(rgb_output_path + f"window{c}.jpg", rgb_subwindow)
                 c += 1
-    export_json(HSI_new_annotation,r"C:\Users\jver\Desktop\Test\windows/COCO_HSI_windowed.json")
+                print(f"Generating cropped-image: {c} out of {n}")
+    export_json(HSI_new_annotation, os.path.join(HSI_image_dir, "windows") + "/COCO_HSI_windowed.json")
     #export_json(rgb_new_annotation,r"C:\Users\jver\Desktop\Test\rgb/COCO_rgb_windowed.json")
-    
    

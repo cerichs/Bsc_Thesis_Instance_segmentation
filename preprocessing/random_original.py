@@ -5,9 +5,9 @@ import sys
 
 sys.path.append("..")
 
-from Display_mask import load_coco, draw_img
+from .Display_mask import load_coco, draw_img
 from two_stage.watershed_2_coco import empty_dict, export_json
-from simple_object_placer import coco_next_anno_id
+from .simple_object_placer import coco_next_anno_id
 
 
 

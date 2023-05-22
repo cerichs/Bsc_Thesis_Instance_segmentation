@@ -1,51 +1,44 @@
+import pandas as pd
+import os
+import sys
 
 from preprocessing.Display_mask import load_coco
 from preprocessing.extract_process_grains import process_data, find_imgs, extract_specifics
 from two_stage.pls_watershed import spectra_plot, PLS_evaluation, PLS_show
 from two_stage.HSI_mean_msc import mean_centering, msc_hyp, median_centering
 from two_stage.output_results import create_dataframe
-import pandas as pd
+from two_stage.pls_eval_result.pls_eval import run_pls_eval
 
 
-
-def load_paths2():
+def load_paths(base_dir):
     """
     Load paths for the dataset, images, and annotations.
 
     Returns:
         dict: A dictionary containing paths for train/Validation annotations and images.
     """
-    return {
-        'train_annotation_path': r"C:\Users\jver\Desktop\dtu\DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo\Training\COCO_Training.json",
-        'train_image_dir': r"C:\Users\jver\Desktop\dtu\DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo\Training\images",
-        'Validation_annotation_path': r"C:\Users\jver\Desktop\dtu\DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo\Validation\COCO_Validation.json",
-        'Validation_image_dir': r"C:\Users\jver\Desktop\dtu\DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo\Validation\images",
-        'hyperspectral_path_train': r"C:\Users\jver\Desktop\Training",
-        'hyperspectral_path_Validation': r"C:\Users\jver\Desktop\Validation",
+    paths =  {
+        
+        'train_annotation_path': os.path.join(base_dir, "data", "e4Wr5LFI4L", "Training", "windows", "COCO_HSI_windowed.json"),
+        'train_image_dir': os.path.join(base_dir, "data", "e4Wr5LFI4L", "Training", "windows", "PLS_eval_img_rgb"),
+        
+        'test_annotation_path': os.path.join(base_dir, "data", "e4Wr5LFI4L", "Test", "windows", "COCO_HSI_windowed.json"),
+        'test_image_dir': os.path.join(base_dir, "data", "e4Wr5LFI4L", "Test", "windows", "PLS_eval_img_rgb"),
+        
+        'Validation_annotation_path': os.path.join(base_dir,"data", "e4Wr5LFI4L", "Validation", "windows", "COCO_HSI_windowed.json"),
+        'Validation_image_dir': os.path.join(base_dir, "data", "e4Wr5LFI4L", "Validation", "windows", "PLS_eval_img_rgb"),
+        
+        'hyperspectral_path_train': os.path.join(base_dir, "data", "e4Wr5LFI4L", "Training", "windows", "PLS_eval_img"),
+        'hyperspectral_path_test': os.path.join(base_dir, "data", "e4Wr5LFI4L", "Test", "windows", "PLS_eval_img"),
+        'hyperspectral_path_Validation': os.path.join(base_dir, "data", "e4Wr5LFI4L", "Validation", "windows", "PLS_eval_img")
     }
-
-
-def load_paths():
-    """
-    Load paths for the dataset, images, and annotations.
-
-    Returns:
-        dict: A dictionary containing paths for train/Validation annotations and images.
-    """
-    return {
-        'train_annotation_path': r"C:\Users\jver\Desktop\Training\windows\COCO_HSI_windowed.json",
-        'train_image_dir': r"C:\Users\jver\Desktop\Training\windows\PLS_eval_img_rgb",
-        
-        'test_annotation_path': r"C:\Users\jver\Desktop\Test\windows\COCO_HSI_windowed.json",
-        'test_image_dir': r"C:\Users\jver\Desktop\Test\windows\PLS_eval_img_rgb",
-        
-        'Validation_annotation_path': r"C:\Users\jver\Desktop\Validation\windows\COCO_HSI_windowed.json",
-        'Validation_image_dir': r"C:\Users\jver\Desktop\Validation\windows\PLS_eval_img_rgb",
-        
-        'hyperspectral_path_train': r"C:\Users\jver\Desktop\Training\windows\PLS_eval_img",
-        'hyperspectral_path_test': r"C:\Users\jver\Desktop\Test\windows\PLS_eval_img",
-        'hyperspectral_path_Validation': r"C:\Users\jver\Desktop\Validation\windows\PLS_eval_img",
-    }
+    
+    for key, value in paths.items():
+       if not os.path.exists(value):
+           print(f"Path {value} does not exist. Please ensure that your data is correctly inserted (refer to readme)")
+           sys.exit()
+           
+    return paths
 
 
 def load_data(paths):
@@ -169,23 +162,27 @@ def validation_PLS_classifier(Validation_dataset, paths, classifiers, refs, whol
     
     
     results = {}
-
+    
+    
     _, results['original'], _ = PLS_evaluation(X_Validation, y_Validation, classifier=classifiers['original'], type_classifier=f"Validation Original {split}")
     _, results['mean_centered'], _ = PLS_evaluation(mean_data, y_Validation, classifier=classifiers['mean_centered'], type_classifier=f"Validation Mean-Centered {split}")
     _, results['msc_mean_centered'], _ = PLS_evaluation(msc_mean, y_Validation, classifier=classifiers['msc_mean_centered'], type_classifier=f"Validation MSC Mean-Centered {split}")
     
-    PLS_show(classifiers['original'], X_Validation, y_Validation, HSI_Validation, results['original'], Validation_dataset, Validation_pseudo_imgs, Validation_img_names, ref=refs['msc_ref'], variation="Orig", type_classifier=f"Validation Original {split}")
-    PLS_show(classifiers['mean_centered'], mean_data, y_Validation, HSI_Validation, results['mean_centered'], Validation_dataset, Validation_pseudo_imgs, Validation_img_names, ref=refs['msc_ref'], variation="Mean", type_classifier=f"Validation Mean-Centered {split}")
-    PLS_show(classifiers['msc_mean_centered'], msc_mean, y_Validation, HSI_Validation, results['msc_mean_centered'], Validation_dataset, Validation_pseudo_imgs, Validation_img_names, ref=refs['msc_ref'], variation="MSC", type_classifier=f"Validation MSC Mean-Centered {split}")
+    
+    
+    
+    run_pls_eval(paths["hyperspectral_path_Validation"], "two_stage/pls_results/Pixel_grain_avg_dataframe.csv", refs['msc_ref'], aggre = "average", RMSE=results['original'], type_classi=None)
+    run_pls_eval(paths["hyperspectral_path_Validation"], "two_stage/pls_results/Pixel_grain_avg_dataframe_{mean}.csv", refs['msc_ref'], aggre = "average", RMSE=results['mean_centered'], type_classi="mean")
+    run_pls_eval(paths["hyperspectral_path_Validation"], "two_stage/pls_results/Pixel_grain_avg_dataframe_{meanMSC}.csv", refs['msc_ref'], aggre = "average", RMSE=results['msc_mean_centered'], type_classi="msc")
+    
+    
+    #PLS_show(classifiers['original'], X_Validation, y_Validation, HSI_Validation, results['original'], Validation_dataset, Validation_pseudo_imgs, Validation_img_names, ref=refs['msc_ref'], variation="Orig", type_classifier=f"Validation Original {split}")
+    #PLS_show(classifiers['mean_centered'], mean_data, y_Validation, HSI_Validation, results['mean_centered'], Validation_dataset, Validation_pseudo_imgs, Validation_img_names, ref=refs['msc_ref'], variation="Mean", type_classifier=f"Validation Mean-Centered {split}")
+    #PLS_show(classifiers['msc_mean_centered'], msc_mean, y_Validation, HSI_Validation, results['msc_mean_centered'], Validation_dataset, Validation_pseudo_imgs, Validation_img_names, ref=refs['msc_ref'], variation="MSC", type_classifier=f"Validation MSC Mean-Centered {split}")
 
     return results
 
-# -*- coding: utf-8 -*-
-"""
-Created on Thu May 18 11:01:01 2023
 
-@author: jver
-"""
 
 def test_PLS_classifier(test_dataset, paths, classifiers, refs, RMSE_validation, whole_img_average=True):
     """
@@ -201,7 +198,8 @@ def test_PLS_classifier(test_dataset, paths, classifiers, refs, RMSE_validation,
     Returns:
         tuple: Results
     """
-    #os.chdir("../")
+    #os.chdir("../)
+    
     # Find images and process data
     hypersepctral_path_test, test_image_dir = paths['hyperspectral_path_test'], paths['test_image_dir']
     
@@ -227,23 +225,31 @@ def test_PLS_classifier(test_dataset, paths, classifiers, refs, RMSE_validation,
     msc_mean = mean_centering(msc_data, ref=refs['msc_ref'])
     _ = create_dataframe(mask_id, labels, msc_mean, split=f"test_meanMSC_{split}")
     
-    results = {}
 
     #_, _, _ = PLS_evaluation(X_test, y_test, classifier=classifiers['original'], type_classifier=f"test Original {split}")
     #_, _, _ = PLS_evaluation(mean_data, y_test, classifier=classifiers['mean_centered'], type_classifier=f"test Mean-Centered {split}")
     #_, _, _ = PLS_evaluation(msc_mean, y_test, classifier=classifiers['msc_mean_centered'], type_classifier=f"test MSC Mean-Centered {split}")
-    PLS_show(classifiers['original'], X_test, y_test, HSI_test, RMSE_validation['original'], test_dataset, test_pseudo_imgs, test_img_names, ref=refs['msc_ref'], variation="Orig", type_classifier=f"test Original {split}")
-    PLS_show(classifiers['mean_centered'], mean_data, y_test, HSI_test, RMSE_validation['mean_centered'], test_dataset, test_pseudo_imgs, test_img_names, ref=refs['msc_ref'], variation="Mean", type_classifier=f"test Mean-Centered {split}")
-    PLS_show(classifiers['msc_mean_centered'], msc_mean, y_test, HSI_test, RMSE_validation['msc_mean_centered'], test_dataset, test_pseudo_imgs, test_img_names, ref=refs['msc_ref'], variation="MSC", type_classifier=f"test MSC Mean-Centered {split}")
+    
+    run_pls_eval(paths["hyperspectral_path_test"], "two_stage/pls_results/Pixel_grain_avg_dataframe.csv", refs['msc_ref'], aggre = "average", RMSE=RMSE_validation['original'], type_classi=None)
+    run_pls_eval(paths["hyperspectral_path_test"], "two_stage/pls_results/Pixel_grain_avg_dataframe_{mean}.csv", refs['msc_ref'], aggre = "average", RMSE=RMSE_validation['mean_centered'], type_classi="mean")
+    run_pls_eval(paths["hyperspectral_path_test"], "two_stage/pls_results/Pixel_grain_avg_dataframe_{meanMSC}.csv", refs['msc_ref'], aggre = "average", RMSE=RMSE_validation['msc_mean_centered'], type_classi="msc")
+    
+    
+    
+    #PLS_show(classifiers['original'], X_test, y_test, HSI_test, RMSE_validation['original'], test_dataset, test_pseudo_imgs, test_img_names, ref=refs['msc_ref'], variation="Orig", type_classifier=f"test Original {split}")
+    #PLS_show(classifiers['mean_centered'], mean_data, y_test, HSI_test, RMSE_validation['mean_centered'], test_dataset, test_pseudo_imgs, test_img_names, ref=refs['msc_ref'], variation="Mean", type_classifier=f"test Mean-Centered {split}")
+    #PLS_show(classifiers['msc_mean_centered'], msc_mean, y_test, HSI_test, RMSE_validation['msc_mean_centered'], test_dataset, test_pseudo_imgs, test_img_names, ref=refs['msc_ref'], variation="MSC", type_classifier=f"test MSC Mean-Centered {split}")
 
-    return results
 
 
 def main():
     """
     Main function that loads the dataset and performs PLS classification on the training and Validation sets.
     """
-    paths = load_paths()
+    
+    # Load data
+    base_dir = os.path.dirname(os.path.abspath(__file__))  # gets the location of the current script file
+    paths = load_paths(base_dir)
     
     # Load training and Validation datasets
     train_dataset, validation_dataset, test_dataset = load_data(paths)

@@ -2,6 +2,7 @@ import numpy as np
 import cv2 as cv
 import os
 import sys
+from tqdm import tqdm
 
 sys.path.append("..")
 
@@ -142,17 +143,7 @@ def coco_new_bbox(x,y,dataset,image_id,annotation_numb):
     height = max(annote[1::2])-min(annote[1::2])
     return [x,y,width,height]
 
-if __name__=="__main__":
-    # Path to the annotation file
-    #annotation_path = r'C:\Users\Cornelius\Documents\GitHub\Bscproject\Bsc_Thesis_Instance_segmentation\preprocessing\COCO_Test.json'
-    annotation_path = r'C:\Users\jver\Desktop\dtu\DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo\Training\COCO_Training.json'
-    
-    # Path to the image directory
-    #image_dir = 'C:/Users/Cornelius/Documents/GitHub/Bscproject/Bsc_Thesis_Instance_segmentation/preprocessing/'
-    image_dir = r'C:\Users\jver\Desktop\dtu\DreierHSI_Apr_05_2023_10_11_Ole-Christian Galbo\Training\images/'
-    # Path to the HSI image directory
-    HSI_image_dir = r"C:\Users\jver\Desktop\Training/"
-    
+def create_synt_images(annotation_path, HSI_image_dir, image_dir, n=100):
     # Load the COCO dataset
     dataset = load_coco(annotation_path)
     
@@ -168,7 +159,7 @@ if __name__=="__main__":
     class_list = [1412692, 1412693, 1412694, 1412695, 1412696, 1412697, 1412698, 1412699, 1412700]
     #              [Rye_midsummer, Wheat_H1, Wheat_H3, Wheat_H4, Wheat_H5, Wheat_Halland, Wheat_Oland, Wheat_Spelt, Foreign]
     
-    for c in range(5):
+    for c in tqdm(range(n)):
         # Create a background image
         background = np.zeros((256, 256, 3), dtype=np.uint8)
         background_hsi = np.zeros((256, 256, 102), dtype=np.float64)
@@ -243,7 +234,11 @@ if __name__=="__main__":
         
         # Save the background image
         background = cv.cvtColor(background, cv.COLOR_BGR2RGB)
-        cv.imwrite(f"images/Synthetic_{c}.jpg", background)
+        output_folder_rgb = os.path.join(HSI_image_dir, "windows", "PLS_eval_img_rgb")
+        print(output_folder_rgb)
+        print("")
+        print(os.path.join(output_folder_rgb, f"Synthetic_{c}.npy"))
+        cv.imwrite(os.path.join(output_folder_rgb, f"Synthetic_{c}.jpg"), background)
         
         # Display the background image
         import matplotlib.pyplot as plt
@@ -251,7 +246,8 @@ if __name__=="__main__":
         plt.show()
         
         # Save the background HSI image
-        np.save(f"images/Synthetic_{c}.npy", background_hsi)
+        output_folder_HSI = os.path.join(HSI_image_dir, "windows", "PLS_eval_img")
+        np.save(os.path.join(output_folder_HSI, f"Synthetic_{c}.npy"), background_hsi)
         
         # Display the background HSI image
         plt.imshow(background_hsi[:, :, 0])
@@ -267,45 +263,8 @@ if __name__=="__main__":
         })
     
     # Export the COCO-like dictionary as a JSON file
-    export_json(dict_coco, "COCO_balanced_1k_val.json")
+    export_json(dict_coco, os.path.join(HSI_image_dir, "windows" "COCO_synthetic.json"))
     
-    # Plot the masks and analyze the grain types
-    plot_mask = False
-    if plot_mask:
-        for new_id in range(1, 11):
-            ground_truth = 0
-            name = []
-            for annotations in dict_coco["annotations"]:
-                if annotations["image_id"] == new_id:
-                    ground_truth += 1
-                    for categories in dict_coco["categories"]:
-                        if categories["id"] == annotations["category_id"]:
-                            #print(annotations["category_id"])
-                            name.append(categories["name"])
-            #name = set(name)
-            unique, counts = np.unique(name, return_counts=True)
-            print("")
-            print(f"The following grain-type being analysed is:  {dict(zip(unique, counts))}   with image_id:  {new_id}")
-            print("")
-            print(f"The ground-truth amount of kernels in the image is:  {ground_truth}")
-                
-        #c = 0 
-
-        for new_id in range(1, 11):
-            annote_ids = []
-            
-            #print (new_annotation['annotations'] )
-            for i in range(len(dict_coco['annotations'])):
-                #print(i)
-                if dict_coco['annotations'][i]['image_id']==new_id:
-                    #print(image_id)
-                    annote_ids.append(i)
-                else:
-                    continue
-            
-            image_dir2 = r"C:\Users\admin\Desktop\bachelor\Bsc_Thesis_Instance_segmentation\preprocessing\images/"
-            draw_img(dict_coco, new_id, annote_ids, image_dir2)
-            
 # =============================================================================
 # ov = np.zeros((300, 300))
 # new_obj = np.zeros((300, 300))

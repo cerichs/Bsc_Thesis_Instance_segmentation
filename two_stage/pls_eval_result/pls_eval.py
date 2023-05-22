@@ -9,13 +9,12 @@ from two_stage.watershed_2_coco import watershed_2_coco
 from two_stage.watershed_v2 import watershedd
 from two_stage.HSI_mean_msc import mean_centering, msc_hyp, median_centering
 from two_stage.pls_watershed import PLS_evaluation, calculate_geometric_mean
+from .coco_eval import CocoEvaluator
+from .coco_utils import get_coco_api_from_dataset
 
-
-from coco_eval import CocoEvaluator
-from coco_utils import get_coco_api_from_dataset
 from PIL import Image
 import time
-import utils
+from . import utils
 import torch
 import os
 import numpy as np
@@ -24,7 +23,7 @@ from PIL import Image
 import cv2 as cv
 import pandas as pd
 from skimage.draw import polygon
-import transforms as T
+from . import transforms as T
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
@@ -98,7 +97,7 @@ def dataset_prep(dataset,root: str):
         collate_fn=utils.collate_fn) 
     return dataset_test, data_loader_test
 
-def evaluate_model(classifier,dataset, ref):
+def evaluate_model(classifier,dataset, ref, aggre = "average", RMSE=13, type_classi=None):
     
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
     dataset_test, data_loader_test = dataset_prep(dataset,r"C:\Users\jver\Desktop\COCO_single")
@@ -112,7 +111,7 @@ def evaluate_model(classifier,dataset, ref):
     for images, targets, img_path in metric_logger.log_every(data_loader_test, 100, header):
         images = list(img for img in images)
         model_time = time.time()
-        outputs = PLS_class(classifier,images,img_path, dataset, ref) # get output to evalute on
+        outputs = PLS_class(classifier,images,img_path, dataset, ref,  aggre, RMSE, type_classi) # get output to evalute on
         outputs = [{k: v for k, v in t.items()} for t in outputs] 
         model_time = time.time() - model_time
         
@@ -132,7 +131,7 @@ def evaluate_model(classifier,dataset, ref):
     torch.set_num_threads(n_threads)
     return coco_evaluator
 
-def PLS_class(classifier,images,img_path, dataset, ref):
+def PLS_class(classifier,images,img_path, dataset, ref,  aggre = "average", RMSE=13, type_classi=None):
     color = ["red", "darkblue", "green", "yellow", "white", "orange", "cyan", "pink"]
     class_list = ["Rye_Midsummer", "Wheat_H1", "Wheat_H3",  "Wheat_H4",   "Wheat_H5", "Wheat_Halland",  "Wheat_Oland", "Wheat_Spelt"]
     result = []
@@ -148,6 +147,8 @@ def PLS_class(classifier,images,img_path, dataset, ref):
         rgb_image, img_tres = binarization(fixed_path) # Uncomment to evaluate with watershed (ie. use predicted masks)
         
         
+        
+        # Perform watershed segmentation on each of pseudo-RGB image-mask
         labels, markers = watershedd(rgb_image, img_tres, plot=False) # Uncomment to evaluate with watershed (ie. use predicted masks)
         #markers = Image.open(fixed_path) # Uncomment to evaluate only PLS (ie. use groundtruth masks)
         #markers = np.array(markers) # Uncomment to evaluate only PLS (ie. use groundtruth masks)
@@ -169,21 +170,25 @@ def PLS_class(classifier,images,img_path, dataset, ref):
             mask[mask == mask_id] = 255
 
             # Compute the pixel average of the spectral image for each grain_mask
-            #pixel_avg = pixel_average(spectral_img, [mask], None, path.split("\\")[-1])[0]
-            pixel_avg = pixel_median(spectral_img, [mask], None, path.split("\\")[-1])[0]
+            if aggre == "median":
+                pixel_avg = pixel_median(spectral_img, [mask], None, path.split("\\")[-1])[0]
+            else:
+                pixel_avg = pixel_average(spectral_img, [mask], None, path.split("\\")[-1])[0]
             
-            #Mean-Center
-            #mean_center = mean_centering(pd.DataFrame(pixel_avg), ref=ref)
-            #pixel_avg = mean_center.values
+            if type_classi == "mean":
+                #Mean-Center
+                mean_center = mean_centering(pd.DataFrame(pixel_avg), ref=ref)
+                pixel_avg = mean_center.values
             
-            #Mean-center MSC
-            #msc = msc_hyp(pd.DataFrame(pixel_avg), ref=ref)[0]
-            #mean_msc = mean_centering(msc, ref=ref)
-            #pixel_avg = mean_msc.values
+            elif type_classi == "msc":
+                #Mean-center MSC
+                msc = msc_hyp(pd.DataFrame(pixel_avg), ref=ref)[0]
+                mean_msc = mean_centering(msc, ref=ref)
+                pixel_avg = mean_msc.values
             
             
             # Get prediction for the mask
-            result2 = classifier.predict(pixel_avg, A=13-1)
+            result2 = classifier.predict(pixel_avg, A=RMSE)
 
             contours, _ = cv.findContours(np.uint8(mask), cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE) # CHAIN_APPROX_NONE to avoid RLE
             if len(contours) != 1 or (len(np.squeeze(contours))) <= 2:
@@ -222,10 +227,15 @@ def PLS_class(classifier,images,img_path, dataset, ref):
         sorted_labels = sorted(by_label.keys())
         sorted_handles = [by_label[label] for label in sorted_labels]
         
+        #filename = os.path.basename(img_path[image])
+        grain_type = os.path.splitext(os.path.basename(path))[0]
+        if type_classi is None:
+            aggre = "Raw"
+        plt.title(f"{grain_type[:-30]}, {aggre}_{type_classi}")
         plt.legend(sorted_handles, sorted_labels, loc="center left", bbox_to_anchor =(1,0.5))
         plt.axis("off")
-        #plt.title(f"{img_names[image][:-30]}, {type_classifier}")
-        plt.savefig(f"pls_results/med_MC.png", dpi=400)
+        output_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "pls_results", f"plsResult_{aggre}_{type_classi}.png")
+        plt.savefig(output_path, dpi=400)
         plt.show()
     return result
     
@@ -247,12 +257,12 @@ def coco_2_masked_img(dataset_path):
 
 
 
-def main():
+def run_pls_eval(test_json_file, train_dataframe, ref, aggre = "average", RMSE=13, type_classi=None):
+    
     coco_2_masked_img(r"C:\Users\jver\Desktop\COCO_single\COCO_rgb_windowed_test_single.json") # uncomment to make PNG images with masks from a COCO json file
     #data = pd.read_csv(r"C:\Users\Corne\Downloads\Pixel_grain_avg_dataframe_train_whole_img.csv")
     data = pd.read_csv(r"C:\Users\jver\OneDrive - Netcompany\Desktop\dtu\Bsc_Thesis_Instance_segmentation-main\Bsc_Thesis_Instance_segmentation\two_stage\pls_results\Pixel_grain_avg_dataframe_train_mediangrain.csv")
-    ref_average = pd.read_csv(r"C:\Users\jver\OneDrive - Netcompany\Desktop\dtu\Bsc_Thesis_Instance_segmentation-main\Bsc_Thesis_Instance_segmentation\MSC.csv", header=None)
-    ref_average = ref_average.iloc[:,1].values[1:]
+    #ref_average = ref_average.iloc[:,1].values[1:]
     
     X = data.iloc[:,2:]
     y_test = data.label
@@ -261,10 +271,5 @@ def main():
     classifier.fit(X, Y, 102)
     #classifier.predict(X, A=20)
     dataset = Dataset(r'C:\Users\jver\Desktop\COCO_single')
-    evaluate_model(classifier,dataset, ref_average)
+    evaluate_model(classifier, dataset, ref, aggre = "mean", RMSE=RMSE, type_classi=type_classi)
 
-
-
-
-if __name__ == "__main__":
-    main()

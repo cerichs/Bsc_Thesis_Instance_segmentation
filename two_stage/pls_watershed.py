@@ -3,7 +3,6 @@ sys.path.append("..")
 from preprocessing.simple_object_placer import coco_next_img_id
 from preprocessing.extract_process_grains import pixel_average
 from preprocessing.preprocess_image import binarization
-from .numpy_improved_kernel import PLS
 from .watershed_2_coco import watershed_2_coco, empty_dict, export_json
 from .watershed_v2 import watershedd
 from .output_results import add_2_coco
@@ -102,6 +101,13 @@ def calculate_geometric_mean(annotations):
 
     return geometric_mean
 
+try:
+    from .numpy_improved_kernel import PLS
+except ModuleNotFoundError:
+    print("Sorry, don't have the proposed PLS file")
+    print("Place the file 'numpy_improved_kernel'-file in the two_stage folder to continue")
+    sys.exit()
+
 def PLS_evaluation(X, y, classifier=None, type_classifier=None):
     """
     Perform partial least squares (PLS) classification on the input dataframe.
@@ -150,14 +156,14 @@ def PLS_evaluation(X, y, classifier=None, type_classifier=None):
         RMSE.append(np.sqrt(mean_squared_error(Y, y_pred)))
 
     # Find the optimal number of components based on the accuracy and RMSE
-    print(f"accuracy: {accuracy}")
-    print("")
-    print(f"RMSE: {RMSE}")
-    with open(f"RMSE_{type_classifier}.txt", "w") as output:
+    #print(f"accuracy: {accuracy}")
+    #print("")
+    #print(f"RMSE: {RMSE}")
+    with open(f"two_stage/pls_results/RMSE_{type_classifier}.txt", "w") as output:
         for i in RMSE:
             i = round(i, 4)
             output.write(str(i) + "\n")
-    with open(f"accuracy_{type_classifier}.txt", "w") as output:
+    with open(f"two_stage/pls_results/accuracy_{type_classifier}.txt", "w") as output:
         for i in accuracy:
             i = round(i, 4)
             output.write(str(i) + "\n")
@@ -198,7 +204,6 @@ def PLS_evaluation(X, y, classifier=None, type_classifier=None):
         conf_matrix = confusion_matrix(conf_true, conf_pred, labels=class_list)
 
 
-        print(np.sum(hey==heyo))
         # Normalise
         cmn = conf_matrix.astype('float') / conf_matrix.sum(axis=1)[:, np.newaxis]
         cmn = cmn.T
@@ -395,8 +400,8 @@ def PLS_show(classifier, X, Y, HSI, RMSE, dataset, img_path, img_names, ref=None
                             'width': rgb_image.shape[1]})
         
         if image < 5:
-            print(spread)
-            print("_____________")
+            #print(spread)
+            #print("_____________")
             handles, labels = plt.gca().get_legend_handles_labels()
             
             #res = (np.argmax(result2, axis=1) == np.argmax(Y[image], axis=1)).sum()

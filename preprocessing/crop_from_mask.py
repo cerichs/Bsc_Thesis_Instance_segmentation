@@ -3,6 +3,7 @@ from .Display_mask import load_coco, load_annotation, find_image
 import numpy as np
 import cv2 as cv
 from skimage.draw import polygon
+import os
 
 def crop_from_mask(dataset,annotation_numb,cropped_im):
     """Crops the region of interest in the cropped_im image
@@ -63,7 +64,7 @@ def fill_mask(dataset,image_id,annotation,image_name,image_path):
 
     row, col = polygon(y, x, img.shape)
     img[row,col] = 1
-    PATH = image_path+image_name
+    PATH = os.path.join(image_path, image_name)
     orig_im = cv.imread(PATH)
     orig_im = cv.cvtColor(orig_im, cv.COLOR_BGR2RGB)
     orig_im = np.uint8(orig_im)

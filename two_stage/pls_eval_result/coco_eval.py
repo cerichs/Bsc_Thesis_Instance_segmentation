@@ -1,9 +1,6 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Tue May  2 08:16:10 2023
 
-@author: jver
-"""
+import sys
+sys.path.append(".")
 
 import copy
 import io
@@ -12,7 +9,7 @@ from contextlib import redirect_stdout
 import numpy as np
 import pycocotools.mask as mask_util
 import torch
-import utils
+from . import utils
 from pycocotools.coco import COCO
 from pycocotools.cocoeval import COCOeval
 
