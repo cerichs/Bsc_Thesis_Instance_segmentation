@@ -17,7 +17,7 @@ The Pseudo-RGB dataset that was used with YOLO, which has both cropped and synth
 
 ## <div align="center">Running Two-Stage Approach</div>
 * Initially, one should run the generate_data-file for creating the dataset. This file neccisate user-input in terms of the desired dataset-size.
-* After this, one can run the main-file.
+* After this, one can run the [main.py].
 
 The two-stage approach aswell as the data generation using cropped subwindows and synthetic data, can be run through [main.py](https://github.com/cerichs/Bsc_Thesis_Instance_segmentation/blob/optimize/main.py). 
 
