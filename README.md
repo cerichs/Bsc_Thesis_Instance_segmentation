@@ -11,6 +11,7 @@ The Pseudo-RGB dataset can be downloaded [HERE](https://github.com/cerichs/Bsc_T
 
 The Pseudo-RGB dataset that was used with YOLO, which has both cropped and synthetic data can be found here [grain256_april](https://github.com/cerichs/Bsc_Thesis_Instance_segmentation/releases/download/Release/grain256_april.zip) with YOLO labels included.
 
+## <div align="center">Two-Stage Approach Folder Structure</div>
 **Very important: all the data needs to be inserted in the data folder. When downloaded the data, both the folder containting RGB images and HSI images needs to be inserted here. DO NOT CHANGE THE NAME OF THE DOWNLOADED FOLDERS! The data-folder should contain PseduoRGB and the HSI folder with each Test, Training and Validation as child folders.**
 
 ** The above-described does only concern the Two-Stage Approach and not Yolo** 
