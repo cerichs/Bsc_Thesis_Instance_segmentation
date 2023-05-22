@@ -16,6 +16,9 @@ The Pseudo-RGB dataset that was used with YOLO, which has both cropped and synth
 ** The above-described does only concern the Two-Stage Approach and not Yolo** 
 
 ## <div align="center">Running Two-Stage Approach</div>
+* Initially, one should run the generate_data-file for creating the dataset. This file neccisate user-input in terms of the desired dataset-size.
+* After this, one can run the main-file.
+* 
 The two-stage approach aswell as the data generation using cropped subwindows and synthetic data, can be run through [main.py](https://github.com/cerichs/Bsc_Thesis_Instance_segmentation/blob/optimize/main.py). 
 
 **Important**, the Two-Stage approach uses a non published PLS-DA algorithm implementation by Ole-Christian Galbo Engstrøm from FOSS (ocge@foss.dk). It is therefore not in this repository, the script can be accessed in the Teams channel used for meetings and contact.
