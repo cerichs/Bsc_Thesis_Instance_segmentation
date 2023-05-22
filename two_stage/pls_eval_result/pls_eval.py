@@ -231,6 +231,8 @@ def PLS_class(classifier,images,img_path, dataset, ref,  aggre = "average", RMSE
         grain_type = os.path.splitext(os.path.basename(path))[0]
         if type_classi is None:
             type_classi = "Raw"
+        if aggre == "mean":
+            aggre = "pixel_averaging"
         plt.title(f"{grain_type[:-32]}, {aggre}_{type_classi}")
         plt.legend(sorted_handles, sorted_labels, loc="center left", bbox_to_anchor =(1,0.5))
         plt.axis("off")
