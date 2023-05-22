@@ -230,8 +230,8 @@ def PLS_class(classifier,images,img_path, dataset, ref,  aggre = "average", RMSE
         #filename = os.path.basename(img_path[image])
         grain_type = os.path.splitext(os.path.basename(path))[0]
         if type_classi is None:
-            aggre = "Raw"
-        plt.title(f"{grain_type[:-30]}, {aggre}_{type_classi}")
+            type_classi = "Raw"
+        plt.title(f"{grain_type[:-32]}, {aggre}_{type_classi}")
         plt.legend(sorted_handles, sorted_labels, loc="center left", bbox_to_anchor =(1,0.5))
         plt.axis("off")
         output_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "pls_results", f"plsResult_{aggre}_{type_classi}.png")
